@@ -1,8 +1,10 @@
+
 import React from 'react';
 import { Clapperboard, FileSpreadsheet, ArrowRight, Youtube, LayoutTemplate } from 'lucide-react';
+import { ViewState } from '../types';
 
 interface HomeProps {
-  onNavigate: (view: 'editor' | 'scraper' | 'shorts' | 'frames') => void;
+  onNavigate: (view: ViewState) => void;
 }
 
 const Home: React.FC<HomeProps> = ({ onNavigate }) => {
@@ -21,10 +23,10 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           IRWAN KURNIA
         </h1>
         <p className="text-slate-400 text-lg md:text-xl mb-12 max-w-2xl mx-auto">
-          Content creation suite. Professional tools for video editing, branding, data scraping, and media management.
+          Content creation suite. Professional tools for video editing, branding, and data scraping.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 w-full max-w-4xl mx-auto">
           
           {/* Video Editor Card */}
           <button 
@@ -98,7 +100,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       </div>
       
       <div className="absolute bottom-6 text-slate-600 text-xs">
-        v1.4.0 • Irwan Kurnia Tools
+        v1.5.0 • Irwan Kurnia Tools
       </div>
     </div>
   );

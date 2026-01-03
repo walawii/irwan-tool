@@ -1,3 +1,4 @@
+
 export enum ThemeColor {
   RED = 'red',
   BLUE = 'blue',
@@ -60,3 +61,5 @@ export interface ScrapedArticle {
   firstParagraph: string;
   imageUrl: string;
 }
+
+export type ViewState = 'home' | 'editor' | 'scraper' | 'shorts' | 'frames';

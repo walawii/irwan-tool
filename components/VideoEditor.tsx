@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Controls from './Controls';
 import PreviewArea from './PreviewArea';
@@ -75,7 +76,9 @@ const VideoEditor: React.FC<VideoEditorProps> = ({ onBack }) => {
   const triggerDownload = (url: string, headline: string) => {
     const a = document.createElement('a');
     a.href = url;
-    a.download = `news-${headline.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.webm`;
+    // Sanitize headline to remove invalid filename characters
+    const safeHeadline = headline.replace(/[/\\?%*:|"<>]/g, '-').trim() || 'video-result';
+    a.download = `${safeHeadline}.webm`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

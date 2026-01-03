@@ -1,11 +1,11 @@
+
 import React, { useState } from 'react';
 import Home from './components/Home';
 import VideoEditor from './components/VideoEditor';
 import Scraper from './components/Scraper';
 import ShortDownloader from './components/ShortDownloader';
 import FrameEditor from './components/FrameEditor';
-
-type ViewState = 'home' | 'editor' | 'scraper' | 'shorts' | 'frames';
+import { ViewState } from './types';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>('home');
