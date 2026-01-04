@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Clapperboard, FileSpreadsheet, ArrowRight, Youtube, LayoutTemplate } from 'lucide-react';
+import { Clapperboard, FileSpreadsheet, ArrowRight, Youtube, LayoutTemplate, Layers } from 'lucide-react';
 import { ViewState } from '../types';
 
 interface HomeProps {
@@ -26,7 +26,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           Content creation suite. Professional tools for video editing, branding, and data scraping.
         </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 w-full max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl mx-auto">
           
           {/* Video Editor Card */}
           <button 
@@ -42,6 +42,23 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             </p>
             <div className="flex items-center text-blue-400 text-xs font-semibold mt-4">
               Open Studio <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </button>
+
+          {/* Video Overlay Maker Card */}
+          <button 
+            onClick={() => onNavigate('overlay')}
+            className="group relative bg-slate-900/50 border border-slate-700 hover:border-amber-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(245,158,11,0.15)] flex flex-col h-72"
+          >
+            <div className="bg-amber-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <Layers className="w-6 h-6 text-amber-500" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-amber-500 transition-colors">Video Overlay</h3>
+            <p className="text-slate-400 text-xs mb-auto leading-relaxed">
+              Tumpuk dua video dalam format 9:16. Cocok untuk video reaksi, tutorial, atau konten kreatif lainnya.
+            </p>
+            <div className="flex items-center text-amber-500 text-xs font-semibold mt-4">
+              Buat Video <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </div>
           </button>
 
@@ -100,7 +117,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       </div>
       
       <div className="absolute bottom-6 text-slate-600 text-xs">
-        v1.5.0 • Irwan Kurnia Tools
+        v1.6.0 • Irwan Kurnia Tools
       </div>
     </div>
   );

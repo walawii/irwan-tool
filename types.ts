@@ -62,4 +62,4 @@ export interface ScrapedArticle {
   imageUrl: string;
 }
 
-export type ViewState = 'home' | 'editor' | 'scraper' | 'shorts' | 'frames';
+export type ViewState = 'home' | 'editor' | 'scraper' | 'shorts' | 'frames' | 'overlay';

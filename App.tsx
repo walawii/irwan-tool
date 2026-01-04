@@ -5,6 +5,7 @@ import VideoEditor from './components/VideoEditor';
 import Scraper from './components/Scraper';
 import ShortDownloader from './components/ShortDownloader';
 import FrameEditor from './components/FrameEditor';
+import VideoOverlayMaker from './components/VideoOverlayMaker';
 import { ViewState } from './types';
 
 const App: React.FC = () => {
@@ -30,6 +31,10 @@ const App: React.FC = () => {
 
       {currentView === 'frames' && (
         <FrameEditor onBack={() => setCurrentView('home')} />
+      )}
+
+      {currentView === 'overlay' && (
+        <VideoOverlayMaker onBack={() => setCurrentView('home')} />
       )}
     </>
   );
