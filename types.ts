@@ -46,6 +46,20 @@ export interface FrameSettings {
   videos: FrameVideoItem[];
 }
 
+export interface OverlayItem {
+  id: string;
+  bgVideo: { url: string; file: File } | null;
+  overlayVideo: { url: string; file: File } | null;
+  status: 'idle' | 'processing' | 'done' | 'error';
+  generatedUrl: string | null;
+  config: {
+    x: number;
+    y: number;
+    scale: number;
+    opacity: number;
+  };
+}
+
 export interface GlobalState {
   audioUrl: string | null;
   audioFile: File | null;
