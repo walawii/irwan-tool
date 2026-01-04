@@ -234,6 +234,18 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
         });
     };
 
+    const triggerDownload = (url: string, originalName: string) => {
+        const a = document.createElement('a');
+        a.href = url;
+        // Extract filename without extension and replace it with .webm
+        const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+        const safeName = baseName.replace(/[/\\?%*:|"<>]/g, '-').trim() || 'video';
+        a.download = `${safeName}.webm`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    };
+
     const handleBatchExport = async () => {
         const validItems = items.filter(i => i.bgVideo && i.overlayVideo && i.status !== 'done');
         if (validItems.length === 0) return;
@@ -250,11 +262,10 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                 const url = await processSingleExport(item);
                 setItems(prev => prev.map(v => v.id === item.id ? { ...v, status: 'done', generatedUrl: url } : v));
                 
-                // Optional: Auto download
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `overlay-${item.bgVideo?.file.name || 'video'}.webm`;
-                a.click();
+                // Auto download with original filename
+                if (item.bgVideo) {
+                    triggerDownload(url, item.bgVideo.file.name);
+                }
             } catch (err) {
                 console.error(err);
                 setItems(prev => prev.map(v => v.id === item.id ? { ...v, status: 'error' } : v));
@@ -415,8 +426,8 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                     </div>
 
                     <div className="flex gap-3">
-                        {activeItem.generatedUrl && (
-                             <button onClick={() => { const a = document.createElement('a'); a.href = activeItem.generatedUrl!; a.download = `overlay-${activeItem.bgVideo?.file.name}.webm`; a.click(); }} className="flex items-center gap-2 px-6 py-2 bg-green-600 rounded-xl text-xs font-bold text-white shadow-lg active:scale-95 transition-all">
+                        {activeItem.generatedUrl && activeItem.bgVideo && (
+                             <button onClick={() => triggerDownload(activeItem.generatedUrl!, activeItem.bgVideo!.file.name)} className="flex items-center gap-2 px-6 py-2 bg-green-600 rounded-xl text-xs font-bold text-white shadow-lg active:scale-95 transition-all">
                                 <Download className="w-4 h-4" /> Download This
                             </button>
                         )}
