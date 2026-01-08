@@ -1,3 +1,4 @@
+
 import { NewsItem, ThemeColor } from "../types";
 
 const getThemeColors = (theme: ThemeColor) => {
@@ -85,8 +86,6 @@ export const exportCompositedVideo = async (
       const video = document.createElement('video');
       video.crossOrigin = "anonymous";
       video.src = item.videoUrl;
-      // CRITICAL: video.muted must be false for createMediaElementSource to get audio in some browsers.
-      // Since the video element is not in the DOM, it won't be heard unless connected to audioCtx.destination.
       video.muted = false; 
       video.volume = 1.0;
       video.playsInline = true;
@@ -135,10 +134,10 @@ export const exportCompositedVideo = async (
       
       let subLayout = null;
       if (item.subheadline) {
-          ctx.font = '700 32px "Oswald", "Arial", sans-serif';
+          ctx.font = `700 ${item.subheadlineSize}px "Oswald", "Arial", sans-serif`;
           const maxSubWidth = canvas.width - (sidePadding * 2);
           const lines = wrapText(ctx, item.subheadline, maxSubWidth);
-          const lineHeight = 44;
+          const lineHeight = item.subheadlineSize * 1.375; // Approx 44 for 32px
           const paddingY = 24; 
           const boxHeight = (lines.length * lineHeight) + paddingY;
           
@@ -156,10 +155,10 @@ export const exportCompositedVideo = async (
           };
       }
 
-      ctx.font = '900 60px "Oswald", "Arial Black", sans-serif';
+      ctx.font = `900 ${item.headlineSize}px "Oswald", "Arial Black", sans-serif`;
       const maxHeadWidth = canvas.width - (sidePadding * 2) - 20; 
       const headLines = wrapText(ctx, item.headline || "HEADLINE", maxHeadWidth);
-      const headLineHeight = 70;
+      const headLineHeight = item.headlineSize * 1.166; // Approx 70 for 60px
       const headPaddingY = 30;
       const headBoxHeight = (headLines.length * headLineHeight) + headPaddingY;
       
@@ -191,14 +190,13 @@ export const exportCompositedVideo = async (
       const badgeY = currentY - badgeHeight;
       currentY = badgeY - 20; 
 
-      const imgHeight = 630;
+      const imgHeight = item.imageHeight || 630;
       const imgWidth = canvas.width; 
       const imgY = currentY - imgHeight;
 
       const videoStream = canvas.captureStream(30);
       const tracks = [...videoStream.getVideoTracks()];
       
-      // Get the audio track from the WebAudio destination
       const audioTracks = dest.stream.getAudioTracks();
       if (audioTracks.length > 0) {
           tracks.push(audioTracks[0]);
@@ -320,11 +318,11 @@ export const exportCompositedVideo = async (
         ctx.fillRect(0, 0, 15, headLayout.boxHeight);
 
         ctx.fillStyle = 'black';
-        ctx.font = '900 60px "Oswald", "Arial Black", sans-serif';
+        ctx.font = `900 ${item.headlineSize}px "Oswald", "Arial Black", sans-serif`;
         ctx.transform(1, 0, 0.035, 1, 0, 0); 
         
         headLayout.lines.forEach((line, i) => {
-            const lineY = 20 + (i * headLayout.lineHeight) + 40; 
+            const lineY = (i * headLayout.lineHeight) + (item.headlineSize * 0.8) + 20; 
             ctx.fillText(line, 25, lineY);
         });
         ctx.restore();
@@ -344,11 +342,11 @@ export const exportCompositedVideo = async (
             ctx.globalAlpha = 1;
             ctx.shadowBlur = 0;
             ctx.fillStyle = 'white';
-            ctx.font = '700 32px "Oswald", "Arial", sans-serif';
+            ctx.font = `700 ${item.subheadlineSize}px "Oswald", "Arial", sans-serif`;
             ctx.transform(1, 0, 0.035, 1, 0, 0); 
             
             subLayout.lines.forEach((line, i) => {
-                 const lineY = 15 + (i * subLayout.lineHeight) + 24;
+                 const lineY = (i * subLayout.lineHeight) + (item.subheadlineSize * 0.75) + 15;
                  ctx.fillText(line, 20, lineY);
             });
             ctx.restore();

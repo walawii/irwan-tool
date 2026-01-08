@@ -1,6 +1,7 @@
+
 import React, { useRef, useState } from 'react';
 import { NewsItem, GlobalState, ThemeColor } from '../types';
-import { Video, Type, Palette, Upload, Image as ImageIcon, Download, Loader2, Music, Link as LinkIcon, CheckCircle, Play, Plus, Trash2, Layers, ArrowLeft, FileSpreadsheet } from 'lucide-react';
+import { Video, Type, Palette, Upload, Image as ImageIcon, Download, Loader2, Music, Link as LinkIcon, CheckCircle, Play, Plus, Trash2, Layers, ArrowLeft, FileSpreadsheet, Maximize } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface ControlsProps {
@@ -97,7 +98,10 @@ const Controls: React.FC<ControlsProps> = ({
                 overlayImage: imgUrl || null,
                 videoUrl: null,
                 videoFile: null,
-                generatedVideoUrl: null
+                generatedVideoUrl: null,
+                headlineSize: 60,
+                subheadlineSize: 32,
+                imageHeight: 630
             });
         });
 
@@ -251,6 +255,22 @@ const Controls: React.FC<ControlsProps> = ({
                     onChange={(e) => onUpdate(activeItemId, { overlayImage: e.target.value })}
                 />
             </div>
+
+            {/* Image Scale Slider */}
+            {activeItem.overlayImage && (
+                <div className="pt-2 animate-in fade-in duration-300">
+                    <div className="flex justify-between text-[10px] text-slate-500 uppercase font-bold mb-1">
+                        <span className="flex items-center gap-1"><Maximize className="w-3 h-3" /> Image Height</span>
+                        <span className="text-blue-400">{activeItem.imageHeight}px</span>
+                    </div>
+                    <input 
+                        type="range" min="200" max="1000" step="10"
+                        value={activeItem.imageHeight}
+                        onChange={(e) => onUpdate(activeItemId, { imageHeight: Number(e.target.value) })}
+                        className="w-full h-1.5 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    />
+                </div>
+            )}
             </div>
         </div>
 
@@ -276,20 +296,49 @@ const Controls: React.FC<ControlsProps> = ({
             <Type className="w-5 h-5" />
             <h2>Clip Content</h2>
             </div>
-            <div className="space-y-3">
-                <input
-                    type="text"
-                    value={activeItem.headline}
-                    onChange={(e) => onUpdate(activeItemId, { headline: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-purple-500 outline-none"
-                    placeholder="HEADLINE"
-                />
-                <textarea
-                    value={activeItem.subheadline}
-                    onChange={(e) => onUpdate(activeItemId, { subheadline: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-purple-500 outline-none min-h-[80px]"
-                    placeholder="Details..."
-                />
+            <div className="space-y-5">
+                <div className="space-y-2">
+                    <input
+                        type="text"
+                        value={activeItem.headline}
+                        onChange={(e) => onUpdate(activeItemId, { headline: e.target.value })}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+                        placeholder="HEADLINE"
+                    />
+                    <div className="flex flex-col gap-1 px-1">
+                        <div className="flex justify-between text-[10px] text-slate-500 uppercase font-bold">
+                            <span>Headline Size</span>
+                            <span className="text-purple-400">{activeItem.headlineSize}px</span>
+                        </div>
+                        <input 
+                            type="range" min="30" max="100" step="2"
+                            value={activeItem.headlineSize}
+                            onChange={(e) => onUpdate(activeItemId, { headlineSize: Number(e.target.value) })}
+                            className="w-full h-1 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-2">
+                    <textarea
+                        value={activeItem.subheadline}
+                        onChange={(e) => onUpdate(activeItemId, { subheadline: e.target.value })}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-purple-500 outline-none min-h-[80px] text-sm"
+                        placeholder="Details..."
+                    />
+                    <div className="flex flex-col gap-1 px-1">
+                        <div className="flex justify-between text-[10px] text-slate-500 uppercase font-bold">
+                            <span>Sub-headline Size</span>
+                            <span className="text-purple-400">{activeItem.subheadlineSize}px</span>
+                        </div>
+                        <input 
+                            type="range" min="16" max="60" step="1"
+                            value={activeItem.subheadlineSize}
+                            onChange={(e) => onUpdate(activeItemId, { subheadlineSize: Number(e.target.value) })}
+                            className="w-full h-1 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                        />
+                    </div>
+                </div>
             </div>
         </div>
 

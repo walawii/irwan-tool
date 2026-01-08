@@ -238,7 +238,8 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
         const a = document.createElement('a');
         a.href = url;
         // Extract filename without extension and replace it with .webm
-        const baseName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+        const lastDotIndex = originalName.lastIndexOf('.');
+        const baseName = lastDotIndex !== -1 ? originalName.substring(0, lastDotIndex) : originalName;
         const safeName = baseName.replace(/[/\\?%*:|"<>]/g, '-').trim() || 'video';
         a.download = `${safeName}.webm`;
         document.body.appendChild(a);
@@ -262,9 +263,9 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                 const url = await processSingleExport(item);
                 setItems(prev => prev.map(v => v.id === item.id ? { ...v, status: 'done', generatedUrl: url } : v));
                 
-                // Auto download with original filename
-                if (item.bgVideo) {
-                    triggerDownload(url, item.bgVideo.file.name);
+                // Auto download with overlay filename as per user request
+                if (item.overlayVideo) {
+                    triggerDownload(url, item.overlayVideo.file.name);
                 }
             } catch (err) {
                 console.error(err);
@@ -426,8 +427,8 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                     </div>
 
                     <div className="flex gap-3">
-                        {activeItem.generatedUrl && activeItem.bgVideo && (
-                             <button onClick={() => triggerDownload(activeItem.generatedUrl!, activeItem.bgVideo!.file.name)} className="flex items-center gap-2 px-6 py-2 bg-green-600 rounded-xl text-xs font-bold text-white shadow-lg active:scale-95 transition-all">
+                        {activeItem.generatedUrl && activeItem.overlayVideo && (
+                             <button onClick={() => triggerDownload(activeItem.generatedUrl!, activeItem.overlayVideo!.file.name)} className="flex items-center gap-2 px-6 py-2 bg-green-600 rounded-xl text-xs font-bold text-white shadow-lg active:scale-95 transition-all">
                                 <Download className="w-4 h-4" /> Download This
                             </button>
                         )}

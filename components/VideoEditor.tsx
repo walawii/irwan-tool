@@ -19,7 +19,10 @@ const VideoEditor: React.FC<VideoEditorProps> = ({ onBack }) => {
     overlayImage: null,
     videoUrl: null,
     videoFile: null,
-    generatedVideoUrl: null
+    generatedVideoUrl: null,
+    headlineSize: 60,
+    subheadlineSize: 32,
+    imageHeight: 630
   }]);
 
   const [activeItemId, setActiveItemId] = useState<string>('1');
@@ -55,7 +58,10 @@ const VideoEditor: React.FC<VideoEditorProps> = ({ onBack }) => {
           overlayImage: null,
           videoUrl: null,
           videoFile: null,
-          generatedVideoUrl: null
+          generatedVideoUrl: null,
+          headlineSize: 60,
+          subheadlineSize: 32,
+          imageHeight: 630
       };
       setItems(prev => [...prev, newItem]);
       setActiveItemId(newItem.id);

@@ -17,6 +17,9 @@ export interface NewsOverlayState {
   subheadline: string;
   theme: ThemeColor;
   overlayImage: string | null;
+  headlineSize: number;
+  subheadlineSize: number;
+  imageHeight: number;
 }
 
 export interface NewsItem extends NewsOverlayState {
