@@ -289,7 +289,11 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
                 setTimeout(r, 300); // Wait for images
             });
             const link = document.createElement('a');
-            link.download = `graphic-${i + 1}-${Date.now()}.png`;
+            
+            // Generate sanitized filename from headline
+            const safeHeadline = (item.headline || 'graphic').replace(/[/\\?%*:|"<>]/g, '-').trim();
+            link.download = `${safeHeadline}-${i + 1}.png`;
+            
             link.href = canvas.toDataURL('image/png');
             link.click();
             await new Promise(r => setTimeout(r, 1200)); 
