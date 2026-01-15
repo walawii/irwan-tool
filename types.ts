@@ -75,6 +75,25 @@ export interface OverlayItem {
   };
 }
 
+export interface ImageItem {
+  id: string;
+  baseImage: string | null;
+  headline: string;
+  subheadline: string;
+  headlineSize: number;
+  subheadlineSize: number;
+  yPosition: number;
+  fontFamily: string;
+  textColor: string;
+  textBgColor: string;
+  useBgBox: boolean;
+  status: 'idle' | 'processing' | 'done';
+  // Image adjustments
+  imageZoom: number;
+  imageX: number;
+  imageY: number;
+}
+
 export interface GlobalState {
   audioUrl: string | null;
   audioFile: File | null;
