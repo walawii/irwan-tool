@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect } from 'react';
 import { NewsItem, GlobalState } from '../types';
 import NewsOverlay from './NewsOverlay';
@@ -38,17 +39,17 @@ const PreviewArea: React.FC<PreviewAreaProps> = ({ activeItem, globalState }) =>
   }, [globalState.audioUrl, activeItem.videoUrl]); 
 
   return (
-    <div className="flex-1 bg-slate-950 flex flex-col items-center justify-center p-4 lg:p-10 relative overflow-hidden">
+    <div className="flex-1 bg-slate-950 flex flex-col items-center justify-center p-4 lg:p-10 relative overflow-hidden min-h-[600px] lg:min-h-0">
         <div className="absolute inset-0 opacity-10 pointer-events-none" 
              style={{ backgroundImage: 'radial-gradient(#475569 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
         </div>
 
-        <div className="relative z-10 flex flex-col items-center gap-4">
-            <h2 className="text-slate-400 text-sm font-medium uppercase tracking-widest mb-2">
+        <div className="relative z-10 flex flex-col items-center gap-4 w-full">
+            <h2 className="text-slate-400 text-xs font-medium uppercase tracking-widest mb-2">
                 Live Preview (Muted)
             </h2>
             
-            <div className="relative w-[360px] h-[640px] bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-800 ring-1 ring-slate-700">
+            <div className="relative w-full max-w-[320px] lg:max-w-[360px] aspect-[9/16] bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-800 ring-1 ring-slate-700">
                 {activeItem.videoUrl ? (
                     <video 
                         key={activeItem.videoUrl} 
@@ -77,7 +78,7 @@ const PreviewArea: React.FC<PreviewAreaProps> = ({ activeItem, globalState }) =>
 
             </div>
             
-            <p className="text-xs text-slate-500 mt-4 max-w-sm text-center">
+            <p className="text-[10px] lg:text-xs text-slate-500 mt-2 lg:mt-4 max-w-sm text-center px-4">
                 Previewing Clip: {activeItem.headline}
             </p>
         </div>

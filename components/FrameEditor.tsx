@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Video, LayoutTemplate, ShieldCheck, Download, Upload, Loader2, Play, Trash2, Maximize, Move, FileVideo, CheckCircle, AlertCircle, List, Plus, Music, Pause, Volume2, VolumeX, Scissors, Type, Sparkles } from 'lucide-react';
+import { ArrowLeft, Video, LayoutTemplate, ShieldCheck, Download, Upload, Loader2, Play, Trash2, Maximize, Move, FileVideo, CheckCircle, AlertCircle, List, Plus, Music, Pause, Volume2, VolumeX, Scissors, Type, Sparkles, ChevronUp, ChevronDown } from 'lucide-react';
 import { FrameSettings, WatermarkPosition, FrameVideoItem, Caption } from '../types';
 import { GoogleGenAI, Type as SchemaType } from "@google/genai";
 
@@ -132,6 +132,7 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [isGeneratingCaptions, setIsGeneratingCaptions] = useState(false);
     const [progress, setProgress] = useState('');
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     const videoInputRef = useRef<HTMLInputElement>(null);
     const frameInputRef = useRef<HTMLInputElement>(null);
@@ -465,15 +466,24 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
 
     return (
         <div className="flex flex-col lg:flex-row h-screen w-full overflow-hidden bg-slate-950 text-white font-inter">
-            <div className="w-full lg:w-96 bg-slate-900 border-r border-slate-800 flex flex-col h-auto lg:h-full shadow-2xl z-20 overflow-hidden">
-                <div className="p-6 border-b border-slate-800 flex items-center gap-3 shrink-0">
+            {/* Sidebar Toggle (Mobile) */}
+            <button 
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="lg:hidden fixed bottom-6 right-6 z-50 bg-purple-600 p-4 rounded-full shadow-2xl text-white active:scale-90 transition-transform"
+            >
+                {isSidebarOpen ? <ChevronDown /> : <ChevronUp />}
+            </button>
+
+            {/* Sidebar */}
+            <div className={`w-full lg:w-96 bg-slate-900 border-r border-slate-800 flex flex-col transition-all duration-300 z-20 shadow-2xl overflow-hidden ${isSidebarOpen ? 'h-[70vh] lg:h-full' : 'h-0 lg:h-full'}`}>
+                <div className="p-4 lg:p-6 border-b border-slate-800 flex items-center gap-3 shrink-0">
                     <button onClick={onBack} className="p-2 -ml-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
                         <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">Frame & Brand</h1>
+                    <h1 className="text-lg lg:text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">Frame & Brand</h1>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin">
+                <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 lg:space-y-8 scrollbar-thin">
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
@@ -486,7 +496,7 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                         </div>
 
                         {settings.videos.length === 0 ? (
-                            <div className="border-2 border-dashed border-slate-800 rounded-xl p-8 text-center bg-slate-950/50">
+                            <div className="border-2 border-dashed border-slate-800 rounded-xl p-6 lg:p-8 text-center bg-slate-950/50">
                                 <Video className="w-8 h-8 mx-auto mb-3 text-slate-700 opacity-20" />
                                 <p className="text-xs text-slate-600">No videos uploaded</p>
                             </div>
@@ -563,16 +573,11 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                                 <button 
                                     onClick={generateCaptions}
                                     disabled={isGeneratingCaptions}
-                                    className={`w-full py-3 px-4 bg-slate-800 border border-slate-700 rounded-xl hover:border-purple-500 transition-all flex items-center justify-center gap-2 text-xs font-bold ${isGeneratingCaptions ? 'opacity-50' : ''}`}
+                                    className={`w-full py-2.5 px-4 bg-slate-800 border border-slate-700 rounded-xl hover:border-purple-500 transition-all flex items-center justify-center gap-2 text-xs font-bold ${isGeneratingCaptions ? 'opacity-50' : ''}`}
                                 >
                                     {isGeneratingCaptions ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-amber-400" />}
                                     {activeVideo.captions.length > 0 ? 'Regenerate Captions' : 'Auto Generate Captions'}
                                 </button>
-                                {activeVideo.captions.length > 0 && (
-                                    <div className="p-2 bg-purple-500/10 border border-purple-500/20 rounded-lg text-[10px] text-purple-300 italic text-center">
-                                        {activeVideo.captions.length} subtitle chunks detected.
-                                    </div>
-                                )}
                             </div>
                         </div>
                     )}
@@ -583,7 +588,7 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                                 <LayoutTemplate className="w-3 h-3" /> Frame Overlay (PNG)
                             </label>
                             <input type="file" accept="image/png" ref={frameInputRef} className="hidden" onChange={(e) => handleFileUpload('frame', e)} />
-                            <button onClick={() => frameInputRef.current?.click()} className="w-full py-3 px-4 bg-slate-800 border border-slate-700 rounded-xl hover:border-purple-500 transition-all flex items-center justify-center gap-2 text-sm">
+                            <button onClick={() => frameInputRef.current?.click()} className="w-full py-2.5 px-4 bg-slate-800 border border-slate-700 rounded-xl hover:border-purple-500 transition-all flex items-center justify-center gap-2 text-sm">
                                 <Upload className="w-4 h-4" /> {settings.frameImageUrl ? 'Change Frame' : 'Upload Frame'}
                             </button>
                         </div>
@@ -593,91 +598,34 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                                 <ShieldCheck className="w-3 h-3" /> Watermark Logo
                             </label>
                             <input type="file" accept="image/*" ref={watermarkInputRef} className="hidden" onChange={(e) => handleFileUpload('watermark', e)} />
-                            <button onClick={() => watermarkInputRef.current?.click()} className="w-full py-3 px-4 bg-slate-800 border border-slate-700 rounded-xl hover:border-purple-500 transition-all flex items-center justify-center gap-2 text-sm">
+                            <button onClick={() => watermarkInputRef.current?.click()} className="w-full py-2.5 px-4 bg-slate-800 border border-slate-700 rounded-xl hover:border-purple-500 transition-all flex items-center justify-center gap-2 text-sm">
                                 <ShieldCheck className="w-4 h-4" /> {settings.watermarkUrl ? 'Change Watermark' : 'Upload Watermark'}
                             </button>
                         </div>
-
-                        {settings.watermarkUrl && (
-                            <div className="space-y-5 animate-in fade-in slide-in-from-top-4 duration-300 border-t border-slate-800 pt-6">
-                                <h3 className="text-xs font-bold text-slate-400 flex items-center gap-2"><Move className="w-3 h-3" /> Brand Config</h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <div className="flex justify-between text-[10px] text-slate-500 uppercase mb-2">
-                                            <span>Position</span>
-                                            <span className="text-purple-400">{settings.watermarkPosition.replace('-', ' ')}</span>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {Object.values(WatermarkPosition).map(pos => (
-                                                <button 
-                                                    key={pos}
-                                                    onClick={() => setSettings(prev => ({ ...prev, watermarkPosition: pos }))}
-                                                    className={`py-2 text-[10px] font-bold rounded-lg border transition-all ${settings.watermarkPosition === pos ? 'bg-purple-600 border-purple-500 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}
-                                                >
-                                                    {pos.toUpperCase().replace('_', ' ')}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div className="flex justify-between text-[10px] text-slate-500 uppercase mb-2">
-                                            <span>Scale</span>
-                                            <span className="text-purple-400">{settings.watermarkSize}%</span>
-                                        </div>
-                                        <input 
-                                            type="range" min="5" max="50" step="1"
-                                            value={settings.watermarkSize}
-                                            onChange={(e) => setSettings(prev => ({ ...prev, watermarkSize: Number(e.target.value) }))}
-                                            className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                                        />
-                                    </div>
-                                    <div>
-                                        <div className="flex justify-between text-[10px] text-slate-500 uppercase mb-2">
-                                            <span>Transparency</span>
-                                            <span className="text-purple-400">{Math.round(settings.watermarkOpacity * 100)}%</span>
-                                        </div>
-                                        <input 
-                                            type="range" min="0" max="1" step="0.05"
-                                            value={settings.watermarkOpacity}
-                                            onChange={(e) => setSettings(prev => ({ ...prev, watermarkOpacity: Number(e.target.value) }))}
-                                            className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
 
-                <div className="shrink-0 p-6 border-t border-slate-800 bg-slate-900/80 backdrop-blur-md space-y-3">
-                    {settings.videos.some(v => v.status === 'done') && !isProcessing && (
-                        <button 
-                            onClick={downloadAll} 
-                            className="w-full py-3 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-900/20 active:scale-95"
-                        >
-                            <Download className="w-4 h-4" /> Download All Result
-                        </button>
-                    )}
+                <div className="shrink-0 p-4 lg:p-6 border-t border-slate-800 bg-slate-900/80 backdrop-blur-md space-y-3">
                     <button 
                         onClick={processAllVideos}
                         disabled={isProcessing || settings.videos.length === 0}
-                        className={`w-full py-4 rounded-xl font-bold transition-all shadow-xl flex items-center justify-center gap-2 ${isProcessing ? 'bg-slate-700 cursor-not-allowed text-slate-400' : 'bg-purple-600 hover:bg-purple-500 active:scale-95 text-white'}`}
+                        className={`w-full py-3 lg:py-4 rounded-xl font-bold transition-all shadow-xl flex items-center justify-center gap-2 ${isProcessing ? 'bg-slate-700 cursor-not-allowed text-slate-400' : 'bg-purple-600 hover:bg-purple-500 active:scale-95 text-white'}`}
                     >
-                        {isProcessing ? <><Loader2 className="w-5 h-5 animate-spin" /> {progress}</> : <><Play className="w-5 h-5 fill-current" /> Batch Process ({settings.videos.length})</>}
+                        {isProcessing ? <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</> : <><Play className="w-5 h-5 fill-current" /> Batch Process ({settings.videos.length})</>}
                     </button>
                     {progress && <p className="text-[10px] text-center text-purple-300 animate-pulse">{progress}</p>}
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col items-center justify-center p-8 relative overflow-hidden">
+            <div className="flex-1 flex flex-col items-center justify-center p-4 lg:p-8 relative overflow-hidden min-h-[500px] lg:min-h-0">
                 <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#475569 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
                 
-                <div className="relative z-10 flex flex-col items-center gap-6">
-                    <div className="flex items-center gap-3 text-slate-500 text-xs font-bold uppercase tracking-widest bg-slate-900/50 px-4 py-2 rounded-full border border-slate-800">
+                <div className="relative z-10 flex flex-col items-center gap-4 lg:gap-6 w-full max-w-2xl">
+                    <div className="flex items-center gap-3 text-slate-500 text-[10px] font-bold uppercase tracking-widest bg-slate-900/50 px-4 py-2 rounded-full border border-slate-800">
                         <Maximize className="w-3 h-3" /> {activeVideo ? `Preview: ${activeVideo.name}` : 'Branding Preview'}
                     </div>
 
-                    <div className="relative w-[320px] h-[570px] bg-black rounded-[40px] overflow-hidden shadow-[0_0_80px_rgba(168,85,247,0.15)] border-[8px] border-slate-800 ring-1 ring-slate-700 group/preview">
+                    <div className="relative w-full max-w-[280px] lg:max-w-[320px] aspect-[9/16] bg-black rounded-[40px] overflow-hidden shadow-[0_0_80px_rgba(168,85,247,0.15)] border-4 lg:border-[8px] border-slate-800 ring-1 ring-slate-700 group/preview">
                         {activeVideo ? (
                             <video 
                                 key={activeVideo.id} 
@@ -721,20 +669,20 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
 
                         {activeVideo && (
                             <div className="absolute inset-x-0 bottom-4 px-4 z-40 opacity-0 group-hover/preview:opacity-100 transition-opacity duration-300">
-                                <div className="bg-slate-950/80 backdrop-blur-md border border-slate-800 rounded-2xl p-3 flex items-center gap-3 shadow-2xl">
+                                <div className="bg-slate-950/80 backdrop-blur-md border border-slate-800 rounded-2xl p-2 lg:p-3 flex items-center gap-3 shadow-2xl">
                                     <button 
                                         onClick={togglePlay}
-                                        className="p-2 hover:bg-slate-800 rounded-full text-white transition-colors"
+                                        className="p-1.5 lg:p-2 hover:bg-slate-800 rounded-full text-white transition-colors"
                                     >
-                                        {isPreviewPaused ? <Play className="w-4 h-4 fill-current" /> : <Pause className="w-4 h-4 fill-current" />}
+                                        {isPreviewPaused ? <Play className="w-3 h-3 lg:w-4 lg:h-4 fill-current" /> : <Pause className="w-3 h-3 lg:w-4 lg:h-4 fill-current" />}
                                     </button>
                                     
                                     <div className="flex items-center gap-2 flex-1">
                                         <button 
                                             onClick={() => setIsPreviewMuted(!isPreviewMuted)}
-                                            className="p-2 hover:bg-slate-800 rounded-full text-white transition-colors"
+                                            className="p-1.5 lg:p-2 hover:bg-slate-800 rounded-full text-white transition-colors"
                                         >
-                                            {isPreviewMuted || previewVolume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                                            {isPreviewMuted || previewVolume === 0 ? <VolumeX className="w-3 h-3 lg:w-4 lg:h-4" /> : <Volume2 className="w-3 h-3 lg:w-4 lg:h-4" />}
                                         </button>
                                         <input 
                                             type="range" min="0" max="1" step="0.01"
@@ -753,24 +701,6 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                         {settings.frameImageUrl && (
                             <img src={settings.frameImageUrl} className="absolute inset-0 w-full h-full object-cover pointer-events-none z-10" alt="Frame" />
                         )}
-
-                        {settings.watermarkUrl && (
-                            <div className={`absolute p-5 pointer-events-none flex transition-all duration-300 z-20 ${
-                                settings.watermarkPosition === WatermarkPosition.TOP_LEFT ? 'top-0 left-0' :
-                                settings.watermarkPosition === WatermarkPosition.TOP_RIGHT ? 'top-0 right-0' :
-                                settings.watermarkPosition === WatermarkPosition.BOTTOM_LEFT ? 'bottom-0 left-0' : 'bottom-0 right-0'
-                            }`}>
-                                <img 
-                                    src={settings.watermarkUrl} 
-                                    style={{ 
-                                        width: `${settings.watermarkSize * 3}px`, 
-                                        opacity: settings.watermarkOpacity 
-                                    }} 
-                                    className="object-contain" 
-                                    alt="Watermark" 
-                                />
-                            </div>
-                        )}
                     </div>
 
                     {activeVideo?.generatedUrl && (
@@ -781,9 +711,9 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                                 a.download = activeVideo.name;
                                 a.click();
                             }}
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-900/20 transition-all active:scale-95 animate-in fade-in slide-in-from-bottom-4"
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-emerald-900/20 transition-all active:scale-95 animate-in fade-in slide-in-from-bottom-4 text-xs"
                         >
-                            <Download className="w-5 h-5" /> Download Branded Clip
+                            <Download className="w-4 h-4" /> Download Branded Clip
                         </button>
                     )}
                 </div>

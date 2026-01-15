@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Upload, Type, ImageIcon, Download, Loader2, Sparkles, Trash2, Smartphone, Maximize, Palette, Move, RefreshCw, Layers, Plus, FileSpreadsheet, List, CheckCircle, Type as FontIcon, MinusCircle, PlusCircle, MoveHorizontal, MoveVertical, ZoomIn } from 'lucide-react';
+import { ArrowLeft, Upload, Type, ImageIcon, Download, Loader2, Sparkles, Trash2, Smartphone, Maximize, Palette, Move, RefreshCw, Layers, Plus, FileSpreadsheet, List, CheckCircle, Type as FontIcon, MinusCircle, PlusCircle, MoveHorizontal, MoveVertical, ZoomIn, ChevronDown, ChevronUp } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { ImageItem } from '../types';
 import * as XLSX from 'xlsx';
@@ -18,14 +18,14 @@ const FONTS = [
 
 const DEFAULT_ITEM: Omit<ImageItem, 'id'> = {
     baseImage: null,
-    headline: 'DESIGN TITLE',
-    subheadline: 'Subtitle text goes here to describe the visual content',
+    headline: 'JUDUL BERITA ANDA',
+    subheadline: 'Tambahkan deskripsi singkat berita di sini agar penonton tertarik melihat konten Anda.',
     headlineSize: 80,
     subheadlineSize: 36,
     yPosition: 80,
     fontFamily: '"Bebas Neue", sans-serif',
     textColor: '#ffffff',
-    textBgColor: 'rgba(0,0,0,0.7)',
+    textBgColor: 'rgba(0,0,0,0.85)',
     useBgBox: true,
     status: 'idle',
     imageZoom: 1,
@@ -60,6 +60,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [aspectRatio, setAspectRatio] = useState<'1:1' | '9:16' | '16:9'>('9:16');
     const [prompt, setPrompt] = useState('');
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -203,57 +204,75 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
             const maxWidth = width * 0.9;
             let currentY = (height * item.yPosition) / 100;
 
-            // Draw Headline with Wrapping
-            if (item.headline) {
-                ctx.font = `900 ${item.headlineSize}px ${item.fontFamily}`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'top';
-                const hLines = wrapText(ctx, item.headline.toUpperCase(), maxWidth);
-                const lineHeight = item.headlineSize * 1.1;
+            // Auto-fitting Logic: Calculate total expected height
+            let hSize = item.headlineSize;
+            let sSize = item.subheadlineSize;
+            
+            ctx.font = `900 ${hSize}px ${item.fontFamily}`;
+            let hLines = wrapText(ctx, item.headline.toUpperCase(), maxWidth);
+            
+            ctx.font = `600 ${sSize}px ${item.fontFamily}`;
+            let sLines = wrapText(ctx, item.subheadline, maxWidth);
+
+            const totalHeight = (hLines.length * hSize * 1.1) + (sLines.length * sSize * 1.3) + 40;
+            const availableHeight = height - currentY - 40;
+
+            // Shrink fonts if they don't fit
+            if (totalHeight > availableHeight && availableHeight > 100) {
+                const ratio = availableHeight / totalHeight;
+                hSize = Math.max(20, Math.floor(hSize * ratio));
+                sSize = Math.max(12, Math.floor(sSize * ratio));
                 
-                const boxHeight = hLines.length * lineHeight;
-                const padding = item.headlineSize * 0.3;
-
-                if (item.useBgBox) {
-                    ctx.fillStyle = item.textBgColor;
-                    let maxLineWidth = 0;
-                    hLines.forEach(l => {
-                        const w = ctx.measureText(l).width;
-                        if (w > maxLineWidth) maxLineWidth = w;
-                    });
-                    ctx.fillRect(centerX - maxLineWidth / 2 - padding, currentY - padding/2, maxLineWidth + padding * 2, boxHeight + padding);
-                }
-
-                ctx.fillStyle = item.textColor;
-                hLines.forEach((line, i) => {
-                    ctx.fillText(line, centerX, currentY + i * lineHeight);
-                });
-
-                currentY += boxHeight + (item.headlineSize * 0.2);
+                // Recalculate wrapping with new sizes
+                ctx.font = `900 ${hSize}px ${item.fontFamily}`;
+                hLines = wrapText(ctx, item.headline.toUpperCase(), maxWidth);
+                ctx.font = `600 ${sSize}px ${item.fontFamily}`;
+                sLines = wrapText(ctx, item.subheadline, maxWidth);
             }
 
-            // Draw Subheadline with Wrapping
-            if (item.subheadline) {
-                ctx.font = `600 ${item.subheadlineSize}px ${item.fontFamily}`;
+            // Draw Headline
+            if (item.headline) {
+                ctx.font = `900 ${hSize}px ${item.fontFamily}`;
                 ctx.textAlign = 'center';
-                ctx.textBaseline = 'top';
-                const sLines = wrapText(ctx, item.subheadline, maxWidth);
-                const lineHeight = item.subheadlineSize * 1.3;
-                const padding = item.subheadlineSize * 0.4;
+                ctx.textBaseline = 'middle';
+                const lineHeight = hSize * 1.1;
+                const padding = hSize * 0.3;
 
-                if (item.useBgBox) {
-                    ctx.fillStyle = item.textBgColor;
-                    let maxLineWidth = 0;
-                    sLines.forEach(l => {
-                        const w = ctx.measureText(l).width;
-                        if (w > maxLineWidth) maxLineWidth = w;
-                    });
-                    ctx.fillRect(centerX - maxLineWidth / 2 - padding, currentY, maxLineWidth + padding * 2, (sLines.length * lineHeight) + padding * 0.5);
-                }
+                hLines.forEach((line, i) => {
+                    const lineY = currentY + i * lineHeight;
+                    const lWidth = ctx.measureText(line).width;
 
-                ctx.fillStyle = item.textColor;
+                    if (item.useBgBox) {
+                        ctx.fillStyle = item.textBgColor;
+                        ctx.fillRect(centerX - lWidth / 2 - padding, lineY - hSize/2 - padding/4, lWidth + padding * 2, hSize + padding/2);
+                    }
+
+                    ctx.fillStyle = item.textColor;
+                    ctx.fillText(line, centerX, lineY);
+                });
+
+                currentY += (hLines.length * lineHeight) + (hSize * 0.3);
+            }
+
+            // Draw Subheadline
+            if (item.subheadline) {
+                ctx.font = `600 ${sSize}px ${item.fontFamily}`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const lineHeight = sSize * 1.3;
+                const padding = sSize * 0.4;
+
                 sLines.forEach((line, i) => {
-                    ctx.fillText(line, centerX, currentY + padding / 3 + i * lineHeight);
+                    const lineY = currentY + i * lineHeight;
+                    const lWidth = ctx.measureText(line).width;
+
+                    if (item.useBgBox) {
+                        ctx.fillStyle = item.textBgColor;
+                        ctx.fillRect(centerX - lWidth / 2 - padding, lineY - sSize/2 - padding/4, lWidth + padding * 2, sSize + padding/2);
+                    }
+
+                    ctx.fillStyle = item.textColor;
+                    ctx.fillText(line, centerX, lineY);
                 });
             }
         };
@@ -266,9 +285,9 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
         
-        if (aspectRatio === '9:16') { canvas.width = 720; canvas.height = 1280; }
-        else if (aspectRatio === '16:9') { canvas.width = 1280; canvas.height = 720; }
-        else { canvas.width = 1000; canvas.height = 1000; }
+        if (aspectRatio === '9:16') { canvas.width = 1080; canvas.height = 1920; }
+        else if (aspectRatio === '16:9') { canvas.width = 1920; canvas.height = 1080; }
+        else { canvas.width = 1080; canvas.height = 1080; }
 
         drawToCanvas(ctx, canvas.width, canvas.height, activeItem);
     }, [items, activeId, aspectRatio]);
@@ -278,23 +297,20 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
         
-        if (aspectRatio === '9:16') { canvas.width = 720; canvas.height = 1280; }
-        else if (aspectRatio === '16:9') { canvas.width = 1280; canvas.height = 720; }
-        else { canvas.width = 1000; canvas.height = 1000; }
+        if (aspectRatio === '9:16') { canvas.width = 1080; canvas.height = 1920; }
+        else if (aspectRatio === '16:9') { canvas.width = 1920; canvas.height = 1080; }
+        else { canvas.width = 1080; canvas.height = 1080; }
 
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
             await new Promise((r) => {
                 drawToCanvas(ctx, canvas.width, canvas.height, item);
-                setTimeout(r, 300); // Wait for images
+                setTimeout(r, 400); // Wait for background and fonts
             });
             const link = document.createElement('a');
-            
-            // Generate sanitized filename from headline
             const safeHeadline = (item.headline || 'graphic').replace(/[/\\?%*:|"<>]/g, '-').trim();
             link.download = `${safeHeadline}-${i + 1}.png`;
-            
-            link.href = canvas.toDataURL('image/png');
+            link.href = canvas.toDataURL('image/png', 1.0);
             link.click();
             await new Promise(r => setTimeout(r, 1200)); 
         }
@@ -302,16 +318,24 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
 
     return (
         <div className="flex flex-col lg:flex-row h-screen w-full overflow-hidden bg-slate-950 text-white font-inter">
+            {/* Sidebar Toggle (Mobile) */}
+            <button 
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="lg:hidden fixed bottom-6 right-6 z-50 bg-indigo-600 p-4 rounded-full shadow-2xl text-white active:scale-90 transition-transform"
+            >
+                {isSidebarOpen ? <ChevronDown /> : <ChevronUp />}
+            </button>
+
             {/* Sidebar */}
-            <div className="w-full lg:w-96 bg-slate-900 border-r border-slate-800 flex flex-col h-auto lg:h-full z-20 shadow-2xl overflow-hidden">
-                <div className="p-6 border-b border-slate-800 flex items-center gap-3 shrink-0">
+            <div className={`w-full lg:w-96 bg-slate-900 border-r border-slate-800 flex flex-col transition-all duration-300 z-20 shadow-2xl overflow-hidden ${isSidebarOpen ? 'h-[70vh] lg:h-full' : 'h-0 lg:h-full'}`}>
+                <div className="p-4 lg:p-6 border-b border-slate-800 flex items-center gap-3 shrink-0">
                     <button onClick={onBack} className="p-2 -ml-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
                         <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-blue-500 bg-clip-text text-transparent">Graphic Studio</h1>
+                    <h1 className="text-lg lg:text-xl font-bold bg-gradient-to-r from-indigo-400 to-blue-500 bg-clip-text text-transparent">Graphic Studio</h1>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin">
+                <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 lg:space-y-8 scrollbar-thin">
                     {/* Storyboard / Queue */}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
@@ -358,14 +382,14 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
                             value={prompt}
                             onChange={(e) => setPrompt(e.target.value)}
                             placeholder="Prompt for background generation..."
-                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-xs text-white focus:ring-1 focus:ring-indigo-500 outline-none h-16 resize-none"
+                            className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white focus:ring-1 focus:ring-indigo-500 outline-none h-16 resize-none"
                         />
                         <div className="grid grid-cols-3 gap-1">
                             {['1:1', '9:16', '16:9'].map(ratio => (
                                 <button 
                                     key={ratio}
                                     onClick={() => setAspectRatio(ratio as any)}
-                                    className={`py-1.5 text-[9px] font-bold rounded border transition-all ${aspectRatio === ratio ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}
+                                    className={`py-1 text-[9px] font-bold rounded border transition-all ${aspectRatio === ratio ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'}`}
                                 >
                                     {ratio}
                                 </button>
@@ -374,7 +398,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
                         <button 
                             onClick={generateAIImage}
                             disabled={isGenerating || !prompt.trim()}
-                            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl active:scale-95 text-xs"
+                            className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl active:scale-95 text-xs"
                         >
                             {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                             Process AI
@@ -402,7 +426,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
                                     <span className="text-indigo-400">{Math.round(activeItem.imageZoom * 100)}%</span>
                                 </div>
                                 <input 
-                                    type="range" min="0.5" max="3" step="0.01"
+                                    type="range" min="0.5" max="4" step="0.01"
                                     value={activeItem.imageZoom}
                                     onChange={(e) => updateActiveItem({ imageZoom: Number(e.target.value) })}
                                     className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
@@ -438,16 +462,9 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
 
                         <div className="space-y-2 pt-2">
                             <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleImageUpload} />
-                            <button onClick={() => fileInputRef.current?.click()} className="w-full py-2.5 px-4 bg-slate-800 border border-slate-700 rounded-xl hover:border-indigo-500 transition-all flex items-center justify-center gap-2 text-xs">
+                            <button onClick={() => fileInputRef.current?.click()} className="w-full py-2 px-4 bg-slate-800 border border-slate-700 rounded-xl hover:border-indigo-500 transition-all flex items-center justify-center gap-2 text-xs">
                                 <Upload className="w-4 h-4" /> Upload Base Image
                             </button>
-                            <input 
-                                type="text" 
-                                placeholder="URL Gambar..."
-                                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-[10px] text-slate-400 outline-none focus:ring-1 focus:ring-indigo-500"
-                                value={activeItem.baseImage?.startsWith('blob') ? '' : activeItem.baseImage || ''}
-                                onChange={(e) => updateActiveItem({ baseImage: e.target.value })}
-                            />
                         </div>
                     </div>
 
@@ -455,27 +472,27 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                             <Type className="w-3 h-3" /> Graphic Content
                         </label>
-                        <div className="space-y-5">
+                        <div className="space-y-4">
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center">
                                     <span className="text-[10px] text-slate-500 uppercase font-bold">Headline</span>
                                     <div className="flex gap-1">
-                                        <button onClick={() => adjustValue('headlineSize', -5, 20, 300)} className="text-slate-500 hover:text-white transition-colors"><MinusCircle className="w-4 h-4" /></button>
-                                        <button onClick={() => adjustValue('headlineSize', 5, 20, 300)} className="text-slate-500 hover:text-white transition-colors"><PlusCircle className="w-4 h-4" /></button>
+                                        <button onClick={() => adjustValue('headlineSize', -5, 20, 400)} className="text-slate-500 hover:text-white transition-colors"><MinusCircle className="w-4 h-4" /></button>
+                                        <button onClick={() => adjustValue('headlineSize', 5, 20, 400)} className="text-slate-500 hover:text-white transition-colors"><PlusCircle className="w-4 h-4" /></button>
                                     </div>
                                 </div>
-                                <input value={activeItem.headline} onChange={(e) => updateActiveItem({ headline: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs outline-none focus:ring-1 focus:ring-indigo-500" placeholder="HEADLINE" />
+                                <input value={activeItem.headline} onChange={(e) => updateActiveItem({ headline: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs outline-none focus:ring-1 focus:ring-indigo-500" placeholder="HEADLINE" />
                             </div>
                             
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center">
                                     <span className="text-[10px] text-slate-500 uppercase font-bold">Subheadline</span>
                                     <div className="flex gap-1">
-                                        <button onClick={() => adjustValue('subheadlineSize', -2, 10, 150)} className="text-slate-500 hover:text-white transition-colors"><MinusCircle className="w-4 h-4" /></button>
-                                        <button onClick={() => adjustValue('subheadlineSize', 2, 10, 150)} className="text-slate-500 hover:text-white transition-colors"><PlusCircle className="w-4 h-4" /></button>
+                                        <button onClick={() => adjustValue('subheadlineSize', -2, 10, 200)} className="text-slate-500 hover:text-white transition-colors"><MinusCircle className="w-4 h-4" /></button>
+                                        <button onClick={() => adjustValue('subheadlineSize', 2, 10, 200)} className="text-slate-500 hover:text-white transition-colors"><PlusCircle className="w-4 h-4" /></button>
                                     </div>
                                 </div>
-                                <textarea value={activeItem.subheadline} onChange={(e) => updateActiveItem({ subheadline: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-[10px] outline-none focus:ring-1 focus:ring-indigo-500 h-20 resize-none" placeholder="Description content..." />
+                                <textarea value={activeItem.subheadline} onChange={(e) => updateActiveItem({ subheadline: e.target.value })} className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-[10px] outline-none focus:ring-1 focus:ring-indigo-500 h-16 resize-none" placeholder="Description content..." />
                             </div>
                         </div>
 
@@ -487,7 +504,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
                                         <button 
                                             key={font.name}
                                             onClick={() => updateActiveItem({ fontFamily: font.family })}
-                                            className={`py-2 text-[9px] rounded border transition-all ${activeItem.fontFamily === font.family ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400'}`}
+                                            className={`py-1.5 text-[9px] rounded border transition-all ${activeItem.fontFamily === font.family ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg' : 'bg-slate-800 border-slate-700 text-slate-400'}`}
                                             style={{ fontFamily: font.family }}
                                         >
                                             {font.name}
@@ -498,70 +515,50 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
                             
                             <div>
                                 <div className="flex justify-between text-[10px] text-slate-500 uppercase font-bold mb-2">
-                                    <span className="flex items-center gap-1">Text Position Y</span>
+                                    <span className="flex items-center gap-1">Position Y</span>
                                     <div className="flex gap-2">
                                         <button onClick={() => adjustValue('yPosition', -1, 0, 100)} className="text-slate-500 hover:text-white transition-colors"><MinusCircle className="w-3.5 h-3.5" /></button>
                                         <button onClick={() => adjustValue('yPosition', 1, 0, 100)} className="text-slate-500 hover:text-white transition-colors"><PlusCircle className="w-3.5 h-3.5" /></button>
-                                        <span className="text-indigo-400 ml-1">{activeItem.yPosition}%</span>
                                     </div>
                                 </div>
                                 <input type="range" min="5" max="95" value={activeItem.yPosition} onChange={(e) => updateActiveItem({ yPosition: Number(e.target.value) })} className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-2">Color</label>
-                                    <div className="flex gap-1.5 flex-wrap">
-                                        {['#ffffff', '#facc15', '#ef4444', '#4ade80', '#000000'].map(color => (
-                                            <button key={color} onClick={() => updateActiveItem({ textColor: color })} className={`w-5 h-5 rounded-full border ${activeItem.textColor === color ? 'border-white ring-2 ring-indigo-500' : 'border-slate-700'}`} style={{ backgroundColor: color }} />
-                                        ))}
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-2">Overlay Style</label>
-                                    <button onClick={() => updateActiveItem({ useBgBox: !activeItem.useBgBox })} className={`w-full py-1.5 text-[8px] font-black rounded border flex items-center justify-center gap-1 ${activeItem.useBgBox ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-500'}`}>
-                                        <Palette className="w-3 h-3" />
-                                        {activeItem.useBgBox ? 'WITH BG' : 'PLAIN'}
-                                    </button>
-                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="p-6 border-t border-slate-800 bg-slate-900/80 backdrop-blur-md">
+                <div className="p-4 lg:p-6 border-t border-slate-800 bg-slate-900/80 backdrop-blur-md">
                     <button 
                         onClick={downloadAll}
                         disabled={items.some(i => !i.baseImage)}
-                        className="w-full py-4 bg-white text-slate-950 hover:bg-slate-100 disabled:bg-slate-800 disabled:text-slate-600 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl active:scale-95 text-sm"
+                        className="w-full py-3 bg-white text-slate-950 hover:bg-slate-100 disabled:bg-slate-800 disabled:text-slate-600 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl active:scale-95 text-xs"
                     >
-                        <Download className="w-5 h-5" /> Download All ({items.length})
+                        <Download className="w-4 h-4" /> Download All ({items.length})
                     </button>
                 </div>
             </div>
 
             {/* Preview Viewport */}
-            <div className="flex-1 flex flex-col items-center justify-center p-8 relative overflow-hidden bg-black">
+            <div className="flex-1 flex flex-col items-center justify-center p-4 lg:p-8 relative overflow-hidden bg-black min-h-[500px] lg:min-h-0">
                 <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#475569 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
                 
-                <div className="relative z-10 flex flex-col items-center gap-6">
+                <div className="relative z-10 flex flex-col items-center gap-4 lg:gap-6 w-full">
                     <div className="flex items-center gap-3 text-slate-500 text-[10px] font-bold uppercase tracking-widest bg-slate-900/50 px-5 py-2 rounded-full border border-slate-800">
-                        <Smartphone className="w-3 h-3" /> {aspectRatio} Monitor Slot #{items.indexOf(activeItem) + 1}
+                        <Smartphone className="w-3 h-3" /> {aspectRatio} Preview Slot #{items.indexOf(activeItem) + 1}
                     </div>
 
                     <div 
-                        className={`relative bg-slate-900 rounded-[30px] overflow-hidden shadow-2xl border-8 border-slate-800 ring-1 ring-slate-700 transition-all duration-500`}
+                        className={`relative bg-slate-900 rounded-[30px] overflow-hidden shadow-2xl border-4 lg:border-8 border-slate-800 ring-1 ring-slate-700 transition-all duration-500 w-full max-w-[280px] lg:max-w-[400px] aspect-[${aspectRatio.split(':').join('/')}]`}
                         style={{ 
-                            width: aspectRatio === '16:9' ? '560px' : aspectRatio === '9:16' ? '300px' : '400px',
-                            height: aspectRatio === '16:9' ? '315px' : aspectRatio === '9:16' ? '533px' : '400px'
+                            aspectRatio: aspectRatio === '9:16' ? '9/16' : aspectRatio === '16:9' ? '16/9' : '1/1'
                         }}
                     >
-                        <canvas ref={canvasRef} className="w-full h-full object-cover" />
+                        <canvas ref={canvasRef} className="w-full h-full object-contain" />
                         
                         {!activeItem.baseImage && !isGenerating && (
                             <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center text-slate-600 bg-slate-900/50">
                                 <Maximize className="w-12 h-12 mb-4 opacity-10" />
-                                <p className="text-xs font-bold uppercase tracking-widest">Awaiting Media Asset</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Awaiting Media Asset</p>
                             </div>
                         )}
 
@@ -573,17 +570,17 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
                         )}
                     </div>
 
-                    <div className="flex gap-3">
-                        <button onClick={() => setItems([ { ...DEFAULT_ITEM, id: Math.random().toString(36).substr(2, 9) } ])} className="flex items-center gap-2 px-4 py-2 bg-slate-800 rounded-xl text-[10px] font-bold hover:bg-red-900/20 text-slate-400 hover:text-red-400 transition-all border border-slate-700">
-                            <Trash2 className="w-3 h-3" /> Reset Session
+                    <div className="flex gap-2">
+                        <button onClick={() => setItems([ { ...DEFAULT_ITEM, id: Math.random().toString(36).substr(2, 9) } ])} className="flex items-center gap-2 px-3 py-2 bg-slate-800 rounded-xl text-[10px] font-bold hover:bg-red-900/20 text-slate-400 hover:text-red-400 transition-all border border-slate-700">
+                            <Trash2 className="w-3 h-3" /> Reset
                         </button>
                         <button onClick={() => {
                              const canvas = canvasRef.current;
                              if (!canvas) return;
                              const ctx = canvas.getContext('2d');
                              if (ctx) drawToCanvas(ctx, canvas.width, canvas.height, activeItem);
-                        }} className="flex items-center gap-2 px-4 py-2 bg-slate-800 rounded-xl text-[10px] font-bold hover:bg-indigo-900/20 text-slate-400 hover:text-indigo-400 transition-all border border-slate-700">
-                            <RefreshCw className="w-3 h-3" /> Force Redraw
+                        }} className="flex items-center gap-2 px-3 py-2 bg-slate-800 rounded-xl text-[10px] font-bold hover:bg-indigo-900/20 text-slate-400 hover:text-indigo-400 transition-all border border-slate-700">
+                            <RefreshCw className="w-3 h-3" /> Redraw
                         </button>
                     </div>
                 </div>
