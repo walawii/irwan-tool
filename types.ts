@@ -31,13 +31,23 @@ export interface NewsItem extends NewsOverlayState {
   generatedVideoUrl: string | null;
 }
 
+export interface Caption {
+  text: string;
+  start: number;
+  end: number;
+}
+
 export interface FrameVideoItem {
   id: string;
   url: string;
   name: string;
+  file: File;
   status: 'idle' | 'processing' | 'done' | 'error';
   generatedUrl: string | null;
   error?: string;
+  trimRange: { start: number; end: number };
+  duration: number;
+  captions: Caption[];
 }
 
 export interface FrameSettings {
@@ -58,8 +68,10 @@ export interface OverlayItem {
   config: {
     x: number;
     y: number;
-    scale: number;
+    width: number;
+    height: number;
     opacity: number;
+    rotation: number;
   };
 }
 
@@ -79,4 +91,4 @@ export interface ScrapedArticle {
   imageUrl: string;
 }
 
-export type ViewState = 'home' | 'editor' | 'scraper' | 'shorts' | 'frames' | 'overlay';
+export type ViewState = 'home' | 'editor' | 'scraper' | 'shorts' | 'frames' | 'overlay' | 'image-studio';

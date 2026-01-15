@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Upload, Layers, Video, Play, Pause, Download, Loader2, Move, Maximize, Smartphone, Trash2, RefreshCw, Plus, List, CheckCircle, AlertCircle, Film } from 'lucide-react';
+import { ArrowLeft, Upload, Layers, Video, Play, Pause, Download, Loader2, Move, Maximize, Smartphone, Trash2, RefreshCw, Plus, List, CheckCircle, AlertCircle, MoveHorizontal, MoveVertical, RotateCw, Sun } from 'lucide-react';
 import { OverlayItem } from '../types';
 
 interface VideoOverlayMakerProps {
@@ -14,7 +14,7 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
         overlayVideo: null,
         status: 'idle',
         generatedUrl: null,
-        config: { x: 50, y: 50, scale: 30, opacity: 1 }
+        config: { x: 50, y: 50, width: 40, height: 40, opacity: 1, rotation: 0 }
     }]);
     const [activeId, setActiveId] = useState<string>(items[0].id);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -45,7 +45,22 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
         if (file) {
             const url = URL.createObjectURL(file);
             if (type === 'bg') updateActiveItem({ bgVideo: { url, file }, generatedUrl: null });
-            else updateActiveItem({ overlayVideo: { url, file }, generatedUrl: null });
+            else {
+                // When uploading overlay, try to set a default height that maintains aspect ratio
+                const tempVideo = document.createElement('video');
+                tempVideo.src = url;
+                tempVideo.onloadedmetadata = () => {
+                    const ratio = tempVideo.videoWidth / tempVideo.videoHeight;
+                    // For a 9:16 canvas (720x1280), if width is 40% (288px), 
+                    // height should be (288 / ratio) which is (0.4 * 720 / ratio) / 1280 of canvas height
+                    const hPercent = (0.4 * 720 / ratio) / 1280 * 100;
+                    updateActiveItem({ 
+                        overlayVideo: { url, file }, 
+                        generatedUrl: null,
+                        config: { ...activeItem.config, height: Math.round(hPercent) }
+                    });
+                };
+            }
             setIsPlaying(false);
         }
         e.target.value = '';
@@ -69,6 +84,10 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
         const newItems = items.filter(i => i.id !== id);
         setItems(newItems);
         if (activeId === id) setActiveId(newItems[0].id);
+    };
+
+    const resetTransform = () => {
+        updateActiveItem({ config: { x: 50, y: 50, width: 40, height: 40, opacity: 1, rotation: 0 } });
     };
 
     const togglePlay = () => {
@@ -110,19 +129,21 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
         // Draw Overlay Video
         if (overlayVideoEl.current && overlayVideoEl.current.readyState >= 2) {
             const v = overlayVideoEl.current;
-            const vRatio = v.videoWidth / v.videoHeight;
             
-            const oWidth = (width * item.config.scale) / 100;
-            const oHeight = oWidth / vRatio;
+            const oWidth = (width * item.config.width) / 100;
+            const oHeight = (height * item.config.height) / 100;
             
-            const ox = (width * item.config.x) / 100 - oWidth / 2;
-            const oy = (height * item.config.y) / 100 - oHeight / 2;
+            const ox = (width * item.config.x) / 100;
+            const oy = (height * item.config.y) / 100;
 
             ctx.save();
+            ctx.translate(ox, oy);
+            ctx.rotate((item.config.rotation * Math.PI) / 180);
             ctx.globalAlpha = item.config.opacity;
             ctx.shadowColor = 'rgba(0,0,0,0.5)';
             ctx.shadowBlur = 20;
-            ctx.drawImage(v, ox, oy, oWidth, oHeight);
+            // Draw centered
+            ctx.drawImage(v, -oWidth / 2, -oHeight / 2, oWidth, oHeight);
             ctx.restore();
         }
     };
@@ -216,15 +237,16 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                 }
                 ctx.drawImage(bgV, dx, dy, dw, dh);
 
-                const ovRatio = ovV.videoWidth / ovV.videoHeight;
-                const oWidth = (canvas.width * item.config.scale) / 100;
-                const oHeight = oWidth / ovRatio;
-                const ox = (canvas.width * item.config.x) / 100 - oWidth / 2;
-                const oy = (canvas.height * item.config.y) / 100 - oHeight / 2;
+                const oWidth = (canvas.width * item.config.width) / 100;
+                const oHeight = (canvas.height * item.config.height) / 100;
+                const ox = (canvas.width * item.config.x) / 100;
+                const oy = (canvas.height * item.config.y) / 100;
 
                 ctx.save();
+                ctx.translate(ox, oy);
+                ctx.rotate((item.config.rotation * Math.PI) / 180);
                 ctx.globalAlpha = item.config.opacity;
-                ctx.drawImage(ovV, ox, oy, oWidth, oHeight);
+                ctx.drawImage(ovV, -oWidth / 2, -oHeight / 2, oWidth, oHeight);
                 ctx.restore();
 
                 setProgress(`Processing: ${Math.floor(ovV.currentTime)}s / ${Math.floor(ovV.duration)}s`);
@@ -237,7 +259,6 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
     const triggerDownload = (url: string, originalName: string) => {
         const a = document.createElement('a');
         a.href = url;
-        // Extract filename without extension and replace it with .webm
         const lastDotIndex = originalName.lastIndexOf('.');
         const baseName = lastDotIndex !== -1 ? originalName.substring(0, lastDotIndex) : originalName;
         const safeName = baseName.replace(/[/\\?%*:|"<>]/g, '-').trim() || 'video';
@@ -263,7 +284,6 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                 const url = await processSingleExport(item);
                 setItems(prev => prev.map(v => v.id === item.id ? { ...v, status: 'done', generatedUrl: url } : v));
                 
-                // Auto download with overlay filename as per user request
                 if (item.overlayVideo) {
                     triggerDownload(url, item.overlayVideo.file.name);
                 }
@@ -280,7 +300,7 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
     return (
         <div className="flex flex-col lg:flex-row h-screen w-full overflow-hidden bg-slate-950 text-white font-inter">
             {/* Sidebar */}
-            <div className="w-full lg:w-96 bg-slate-900 border-r border-slate-800 flex flex-col h-auto lg:h-full z-20 shadow-2xl">
+            <div className="w-full lg:w-96 bg-slate-900 border-r border-slate-800 flex flex-col h-auto lg:h-full z-20 shadow-2xl overflow-hidden">
                 <div className="p-6 border-b border-slate-800 flex items-center gap-3 shrink-0">
                     <button onClick={onBack} className="p-2 -ml-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
                         <ArrowLeft className="w-5 h-5" />
@@ -299,7 +319,7 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                             </button>
                         </div>
 
-                        <div className="space-y-2 max-h-48 overflow-y-auto pr-2 scrollbar-thin">
+                        <div className="space-y-2 max-h-32 overflow-y-auto pr-2 scrollbar-thin">
                             {items.map((item, idx) => (
                                 <div 
                                     key={item.id}
@@ -330,7 +350,7 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                             <input type="file" accept="video/*" ref={bgInputRef} className="hidden" onChange={(e) => handleVideoUpload('bg', e)} />
                             <button onClick={() => bgInputRef.current?.click()} className={`w-full py-3 px-4 bg-slate-800 border rounded-xl flex items-center gap-3 transition-all ${activeItem.bgVideo ? 'border-amber-500/50' : 'border-slate-700 hover:border-slate-600'}`}>
                                 <Upload className={`w-4 h-4 ${activeItem.bgVideo ? 'text-amber-500' : 'text-slate-500'}`} />
-                                <span className="text-xs font-bold truncate flex-1 text-left">{activeItem.bgVideo?.file.name || 'BG Video'}</span>
+                                <span className="text-xs font-bold truncate flex-1 text-left">{activeItem.bgVideo?.file.name || 'Background Video'}</span>
                             </button>
 
                             <input type="file" accept="video/*" ref={overlayInputRef} className="hidden" onChange={(e) => handleVideoUpload('overlay', e)} />
@@ -342,18 +362,32 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                     </div>
 
                     {activeItem.overlayVideo && (
-                        <div className="space-y-6 pt-2">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                <Move className="w-3 h-3" /> Controls
-                            </label>
+                        <div className="space-y-6 pt-2 border-t border-slate-800 pt-6 animate-in slide-in-from-bottom-4">
+                            <div className="flex items-center justify-between">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                    <Move className="w-3 h-3" /> Transformations
+                                </label>
+                                <button onClick={resetTransform} className="text-[10px] text-amber-500 hover:text-amber-400 font-bold uppercase tracking-widest flex items-center gap-1">
+                                    <RefreshCw className="w-3 h-3" /> Reset
+                                </button>
+                            </div>
 
                             <div className="space-y-5">
-                                <div>
-                                    <div className="flex justify-between text-[10px] text-slate-500 uppercase mb-2">
-                                        <span>Scale</span>
-                                        <span className="text-amber-500">{activeItem.config.scale}%</span>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <div className="flex justify-between text-[10px] text-slate-500 uppercase mb-2">
+                                            <span className="flex items-center gap-1"><MoveHorizontal className="w-3 h-3" /> Width</span>
+                                            <span className="text-amber-500">{activeItem.config.width}%</span>
+                                        </div>
+                                        <input type="range" min="5" max="150" value={activeItem.config.width} onChange={(e) => updateActiveItem({ config: { width: Number(e.target.value) } })} className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
                                     </div>
-                                    <input type="range" min="10" max="100" value={activeItem.config.scale} onChange={(e) => updateActiveItem({ config: { scale: Number(e.target.value) } })} className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                                    <div>
+                                        <div className="flex justify-between text-[10px] text-slate-500 uppercase mb-2">
+                                            <span className="flex items-center gap-1"><MoveVertical className="w-3 h-3" /> Height</span>
+                                            <span className="text-amber-500">{activeItem.config.height}%</span>
+                                        </div>
+                                        <input type="range" min="5" max="150" value={activeItem.config.height} onChange={(e) => updateActiveItem({ config: { height: Number(e.target.value) } })} className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                                    </div>
                                 </div>
 
                                 <div>
@@ -370,6 +404,23 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                                         <span className="text-amber-500">{activeItem.config.y}%</span>
                                     </div>
                                     <input type="range" min="0" max="100" value={activeItem.config.y} onChange={(e) => updateActiveItem({ config: { y: Number(e.target.value) } })} className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <div className="flex justify-between text-[10px] text-slate-500 uppercase mb-2">
+                                            <span className="flex items-center gap-1"><Sun className="w-3 h-3" /> Opacity</span>
+                                            <span className="text-amber-500">{Math.round(activeItem.config.opacity * 100)}%</span>
+                                        </div>
+                                        <input type="range" min="0" max="1" step="0.05" value={activeItem.config.opacity} onChange={(e) => updateActiveItem({ config: { opacity: Number(e.target.value) } })} className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between text-[10px] text-slate-500 uppercase mb-2">
+                                            <span className="flex items-center gap-1"><RotateCw className="w-3 h-3" /> Rotation</span>
+                                            <span className="text-amber-500">{activeItem.config.rotation}°</span>
+                                        </div>
+                                        <input type="range" min="-180" max="180" value={activeItem.config.rotation} onChange={(e) => updateActiveItem({ config: { rotation: Number(e.target.value) } })} className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                                    </div>
                                 </div>
                             </div>
                         </div>

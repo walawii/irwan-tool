@@ -1,6 +1,8 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Video, LayoutTemplate, ShieldCheck, Download, Upload, Loader2, Play, Trash2, Maximize, Move, FileVideo, CheckCircle, AlertCircle, List, Plus, Music, Pause, Volume2, VolumeX } from 'lucide-react';
-import { FrameSettings, WatermarkPosition, FrameVideoItem } from '../types';
+import { ArrowLeft, Video, LayoutTemplate, ShieldCheck, Download, Upload, Loader2, Play, Trash2, Maximize, Move, FileVideo, CheckCircle, AlertCircle, List, Plus, Music, Pause, Volume2, VolumeX, Scissors, Type, Sparkles } from 'lucide-react';
+import { FrameSettings, WatermarkPosition, FrameVideoItem, Caption } from '../types';
+import { GoogleGenAI, Type as SchemaType } from "@google/genai";
 
 interface FrameEditorProps {
     onBack: () => void;
@@ -94,7 +96,6 @@ const WaveformVisualizer: React.FC<VisualizerProps> = ({ videoRef, isActive, isM
         };
     }, [isActive, videoRef.current?.src]);
 
-    // Handle Mute and Volume changes
     useEffect(() => {
         if (gainNodeRef.current && audioContextRef.current) {
             if (audioContextRef.current.state === 'suspended') {
@@ -124,13 +125,12 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
         videos: []
     });
 
-    // Preview specific states
     const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
     const [isPreviewPaused, setIsPreviewPaused] = useState(false);
     const [isPreviewMuted, setIsPreviewMuted] = useState(true);
     const [previewVolume, setPreviewVolume] = useState(0.8);
-
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isGeneratingCaptions, setIsGeneratingCaptions] = useState(false);
     const [progress, setProgress] = useState('');
 
     const videoInputRef = useRef<HTMLInputElement>(null);
@@ -139,6 +139,20 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
 
     const activeVideo = settings.videos.find(v => v.id === activeVideoId) || settings.videos[0];
+
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video || !activeVideo) return;
+
+        const checkTrim = () => {
+            if (video.currentTime >= activeVideo.trimRange.end) {
+                video.currentTime = activeVideo.trimRange.start;
+            }
+        };
+
+        video.addEventListener('timeupdate', checkTrim);
+        return () => video.removeEventListener('timeupdate', checkTrim);
+    }, [activeVideo?.trimRange, activeVideoId]);
 
     const togglePlay = () => {
         if (!videoRef.current) return;
@@ -155,15 +169,26 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
         if (!files || files.length === 0) return;
 
         if (type === 'video') {
-            const newVideos: FrameVideoItem[] = Array.from(files).map((file: File) => ({
-                id: Math.random().toString(36).substr(2, 9),
-                url: URL.createObjectURL(file),
-                name: file.name,
-                status: 'idle',
-                generatedUrl: null
-            }));
-            setSettings(prev => ({ ...prev, videos: [...prev.videos, ...newVideos] }));
-            if (!activeVideoId && newVideos.length > 0) setActiveVideoId(newVideos[0].id);
+            Array.from(files).forEach((file: File) => {
+                const url = URL.createObjectURL(file);
+                const tempVideo = document.createElement('video');
+                tempVideo.src = url;
+                tempVideo.onloadedmetadata = () => {
+                    const newVideo: FrameVideoItem = {
+                        id: Math.random().toString(36).substr(2, 9),
+                        url: url,
+                        file: file,
+                        name: file.name,
+                        status: 'idle',
+                        generatedUrl: null,
+                        trimRange: { start: 0, end: tempVideo.duration },
+                        duration: tempVideo.duration,
+                        captions: []
+                    };
+                    setSettings(prev => ({ ...prev, videos: [...prev.videos, newVideo] }));
+                    if (!activeVideoId) setActiveVideoId(newVideo.id);
+                };
+            });
         } else {
             const file = files[0];
             const url = URL.createObjectURL(file);
@@ -183,6 +208,70 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
         });
     };
 
+    const updateTrim = (id: string, start: number, end: number) => {
+        setSettings(prev => ({
+            ...prev,
+            videos: prev.videos.map(v => v.id === id ? { ...v, trimRange: { start, end } } : v)
+        }));
+    };
+
+    const generateCaptions = async () => {
+        if (!activeVideo) return;
+        setIsGeneratingCaptions(true);
+        setProgress('AI is listening to your video...');
+
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const file = activeVideo.file;
+            const reader = new FileReader();
+            
+            const base64Data = await new Promise<string>((resolve) => {
+                reader.onload = () => resolve((reader.result as string).split(',')[1]);
+                reader.readAsDataURL(file);
+            });
+
+            const response = await ai.models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: [
+                    {
+                        parts: [
+                            { inlineData: { data: base64Data, mimeType: file.type } },
+                            { text: "Tolong transkrip video ini menjadi subtitle dalam format JSON. Hasilnya harus berupa array objek dengan properti 'text', 'start' (detik), dan 'end' (detik). Gunakan Bahasa Indonesia." }
+                        ]
+                    }
+                ],
+                config: {
+                    responseMimeType: 'application/json',
+                    responseSchema: {
+                        type: SchemaType.ARRAY,
+                        items: {
+                            type: SchemaType.OBJECT,
+                            properties: {
+                                text: { type: SchemaType.STRING },
+                                start: { type: SchemaType.NUMBER },
+                                end: { type: SchemaType.NUMBER }
+                            },
+                            required: ['text', 'start', 'end']
+                        }
+                    }
+                }
+            });
+
+            const caps = JSON.parse(response.text || '[]') as Caption[];
+            setSettings(prev => ({
+                ...prev,
+                videos: prev.videos.map(v => v.id === activeVideo.id ? { ...v, captions: caps } : v)
+            }));
+            setProgress('Captions generated!');
+        } catch (err) {
+            console.error("Caption generation failed", err);
+            alert("Gagal membuat caption otomatis. Pastikan API Key valid.");
+        } finally {
+            setIsGeneratingCaptions(false);
+            setTimeout(() => setProgress(''), 3000);
+        }
+    };
+
     const processSingleVideo = async (videoItem: FrameVideoItem): Promise<string> => {
         return new Promise(async (resolve, reject) => {
             try {
@@ -196,8 +285,6 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                 const video = document.createElement('video');
                 video.src = videoItem.url;
                 video.crossOrigin = 'anonymous';
-                // CRITICAL: video.muted must be false for createMediaElementSource to get audio.
-                // It is silent because it's not in the DOM.
                 video.muted = false; 
                 video.volume = 1.0;
                 
@@ -236,12 +323,8 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                     combinedStream.addTrack(audioTracks[0]);
                 }
 
-                const recorderMimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') 
-                    ? 'video/webm;codecs=vp9,opus' 
-                    : 'video/webm';
-
                 const recorder = new MediaRecorder(combinedStream, { 
-                    mimeType: recorderMimeType 
+                    mimeType: 'video/webm;codecs=vp9,opus' 
                 });
 
                 const chunks: Blob[] = [];
@@ -257,10 +340,11 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                 };
 
                 recorder.start();
+                video.currentTime = videoItem.trimRange.start;
                 video.play();
 
                 const draw = () => {
-                    if (video.paused || video.ended) {
+                    if (video.paused || video.ended || video.currentTime >= videoItem.trimRange.end) {
                         if (recorder.state === 'recording') recorder.stop();
                         return;
                     }
@@ -278,10 +362,37 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                     }
                     ctx.drawImage(video, sx, sy, dw, dh);
 
+                    // Frame
                     if (frameImg) {
                         ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
                     }
 
+                    // Captions
+                    if (videoItem.captions.length > 0) {
+                        const currentCap = videoItem.captions.find(c => video.currentTime >= c.start && video.currentTime <= c.end);
+                        if (currentCap) {
+                            ctx.save();
+                            ctx.font = 'bold 36px "Inter", sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            
+                            const lines = currentCap.text.split('\n');
+                            const yBase = canvas.height - 180;
+                            
+                            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                            const textWidth = ctx.measureText(currentCap.text).width + 40;
+                            ctx.fillRect(canvas.width/2 - textWidth/2, yBase - 30, textWidth, 60);
+
+                            ctx.fillStyle = 'white';
+                            ctx.strokeStyle = 'black';
+                            ctx.lineWidth = 4;
+                            ctx.strokeText(currentCap.text, canvas.width/2, yBase);
+                            ctx.fillText(currentCap.text, canvas.width/2, yBase);
+                            ctx.restore();
+                        }
+                    }
+
+                    // Watermark
                     if (watermarkImg) {
                         ctx.save();
                         ctx.globalAlpha = settings.watermarkOpacity;
@@ -290,7 +401,6 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                         const wWidth = wSize;
                         const wHeight = wSize / wAspect;
                         const padding = 40;
-
                         let wx, wy;
                         switch (settings.watermarkPosition) {
                             case WatermarkPosition.TOP_LEFT: wx = padding; wy = padding; break;
@@ -314,9 +424,7 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
     const processAllVideos = async () => {
         if (settings.videos.length === 0) return;
         setIsProcessing(true);
-
         const videosToProcess = settings.videos.filter(v => v.status !== 'done');
-        
         for (let i = 0; i < videosToProcess.length; i++) {
             const video = videosToProcess[i];
             setSettings(prev => ({
@@ -324,7 +432,6 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                 videos: prev.videos.map(v => v.id === video.id ? { ...v, status: 'processing' } : v)
             }));
             setProgress(`Processing ${i + 1}/${videosToProcess.length}: ${video.name}`);
-
             try {
                 const resultUrl = await processSingleVideo(video);
                 setSettings(prev => ({
@@ -339,7 +446,6 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                 }));
             }
         }
-
         setIsProcessing(false);
         setProgress('');
     };
@@ -347,7 +453,6 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
     const downloadAll = () => {
         const doneVideos = settings.videos.filter(v => v.status === 'done' && v.generatedUrl);
         if (doneVideos.length === 0) return;
-        
         doneVideos.forEach((v, i) => {
             setTimeout(() => {
                 const a = document.createElement('a');
@@ -386,7 +491,7 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                                 <p className="text-xs text-slate-600">No videos uploaded</p>
                             </div>
                         ) : (
-                            <div className="space-y-2 max-h-64 overflow-y-auto pr-2 scrollbar-thin">
+                            <div className="space-y-2 max-h-48 overflow-y-auto pr-2 scrollbar-thin">
                                 {settings.videos.map((v) => (
                                     <div 
                                         key={v.id}
@@ -403,7 +508,7 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                                              v.status === 'done' ? <CheckCircle className="w-4 h-4 text-green-500 shrink-0" /> :
                                              v.status === 'error' ? <AlertCircle className="w-4 h-4 text-red-500 shrink-0" /> :
                                              <FileVideo className="w-4 h-4 text-slate-500 shrink-0" />}
-                                            <span className="text-xs truncate text-slate-300 font-medium">{v.name}</span>
+                                            <span className="text-[10px] truncate text-slate-300 font-medium">{v.name}</span>
                                         </div>
                                         <button 
                                           onClick={(e) => { e.stopPropagation(); removeVideo(v.id); }} 
@@ -417,7 +522,62 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                         )}
                     </div>
 
-                    <div className="space-y-6 pt-2">
+                    {activeVideo && (
+                        <div className="space-y-6 pt-2 border-t border-slate-800 pt-6 animate-in fade-in duration-500">
+                             <div className="space-y-4">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                    <Scissors className="w-3 h-3" /> Video Trimmer
+                                </label>
+                                <div className="space-y-3 p-3 bg-slate-800/50 rounded-xl border border-slate-700">
+                                    <div>
+                                        <div className="flex justify-between text-[9px] text-slate-400 uppercase mb-1">
+                                            <span>Start Time</span>
+                                            <span>{activeVideo.trimRange.start.toFixed(1)}s</span>
+                                        </div>
+                                        <input 
+                                            type="range" min="0" max={activeVideo.duration} step="0.1"
+                                            value={activeVideo.trimRange.start}
+                                            onChange={(e) => updateTrim(activeVideo.id, Math.min(Number(e.target.value), activeVideo.trimRange.end - 0.5), activeVideo.trimRange.end)}
+                                            className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between text-[9px] text-slate-400 uppercase mb-1">
+                                            <span>End Time</span>
+                                            <span>{activeVideo.trimRange.end.toFixed(1)}s</span>
+                                        </div>
+                                        <input 
+                                            type="range" min="0" max={activeVideo.duration} step="0.1"
+                                            value={activeVideo.trimRange.end}
+                                            onChange={(e) => updateTrim(activeVideo.id, activeVideo.trimRange.start, Math.max(Number(e.target.value), activeVideo.trimRange.start + 0.5))}
+                                            className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                    <Type className="w-3 h-3" /> Auto Captions
+                                </label>
+                                <button 
+                                    onClick={generateCaptions}
+                                    disabled={isGeneratingCaptions}
+                                    className={`w-full py-3 px-4 bg-slate-800 border border-slate-700 rounded-xl hover:border-purple-500 transition-all flex items-center justify-center gap-2 text-xs font-bold ${isGeneratingCaptions ? 'opacity-50' : ''}`}
+                                >
+                                    {isGeneratingCaptions ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-amber-400" />}
+                                    {activeVideo.captions.length > 0 ? 'Regenerate Captions' : 'Auto Generate Captions'}
+                                </button>
+                                {activeVideo.captions.length > 0 && (
+                                    <div className="p-2 bg-purple-500/10 border border-purple-500/20 rounded-lg text-[10px] text-purple-300 italic text-center">
+                                        {activeVideo.captions.length} subtitle chunks detected.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="space-y-6 pt-2 border-t border-slate-800 pt-6">
                         <div>
                             <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-3">
                                 <LayoutTemplate className="w-3 h-3" /> Frame Overlay (PNG)
@@ -441,7 +601,6 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                         {settings.watermarkUrl && (
                             <div className="space-y-5 animate-in fade-in slide-in-from-top-4 duration-300 border-t border-slate-800 pt-6">
                                 <h3 className="text-xs font-bold text-slate-400 flex items-center gap-2"><Move className="w-3 h-3" /> Brand Config</h3>
-                                
                                 <div className="space-y-4">
                                     <div>
                                         <div className="flex justify-between text-[10px] text-slate-500 uppercase mb-2">
@@ -460,7 +619,6 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                                             ))}
                                         </div>
                                     </div>
-
                                     <div>
                                         <div className="flex justify-between text-[10px] text-slate-500 uppercase mb-2">
                                             <span>Scale</span>
@@ -473,7 +631,6 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                                             className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
                                         />
                                     </div>
-
                                     <div>
                                         <div className="flex justify-between text-[10px] text-slate-500 uppercase mb-2">
                                             <span>Transparency</span>
@@ -508,7 +665,7 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                     >
                         {isProcessing ? <><Loader2 className="w-5 h-5 animate-spin" /> {progress}</> : <><Play className="w-5 h-5 fill-current" /> Batch Process ({settings.videos.length})</>}
                     </button>
-                    <p className="text-[9px] text-center text-slate-500 uppercase tracking-widest font-bold flex items-center justify-center gap-1.5"><Music className="w-3 h-3" /> Audio Track Preserved</p>
+                    {progress && <p className="text-[10px] text-center text-purple-300 animate-pulse">{progress}</p>}
                 </div>
             </div>
 
@@ -546,7 +703,22 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                             volume={previewVolume}
                         />
 
-                        {/* Independent Preview Controls Overlay */}
+                        {activeVideo && activeVideo.captions.length > 0 && (
+                            <div className="absolute bottom-32 inset-x-4 z-40 text-center pointer-events-none transition-all duration-300">
+                                {activeVideo.captions.map((c, i) => {
+                                    const isActive = videoRef.current ? (videoRef.current.currentTime >= c.start && videoRef.current.currentTime <= c.end) : false;
+                                    if (!isActive) return null;
+                                    return (
+                                        <div key={i} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                            <span className="inline-block bg-black/60 backdrop-blur-sm text-white font-bold text-sm px-3 py-1.5 rounded-lg border border-white/10 shadow-xl shadow-black/40">
+                                                {c.text}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
                         {activeVideo && (
                             <div className="absolute inset-x-0 bottom-4 px-4 z-40 opacity-0 group-hover/preview:opacity-100 transition-opacity duration-300">
                                 <div className="bg-slate-950/80 backdrop-blur-md border border-slate-800 rounded-2xl p-3 flex items-center gap-3 shadow-2xl">

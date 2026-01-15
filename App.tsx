@@ -6,6 +6,7 @@ import Scraper from './components/Scraper';
 import ShortDownloader from './components/ShortDownloader';
 import FrameEditor from './components/FrameEditor';
 import VideoOverlayMaker from './components/VideoOverlayMaker';
+import ImageStudio from './components/ImageStudio';
 import { ViewState } from './types';
 
 const App: React.FC = () => {
@@ -35,6 +36,10 @@ const App: React.FC = () => {
 
       {currentView === 'overlay' && (
         <VideoOverlayMaker onBack={() => setCurrentView('home')} />
+      )}
+
+      {currentView === 'image-studio' && (
+        <ImageStudio onBack={() => setCurrentView('home')} />
       )}
     </>
   );

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Clapperboard, FileSpreadsheet, ArrowRight, Youtube, LayoutTemplate, Layers } from 'lucide-react';
+import { Clapperboard, FileSpreadsheet, ArrowRight, Youtube, LayoutTemplate, Layers, ImageIcon } from 'lucide-react';
 import { ViewState } from '../types';
 
 interface HomeProps {
@@ -23,7 +23,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           IRWAN KURNIA
         </h1>
         <p className="text-slate-400 text-lg md:text-xl mb-12 max-w-2xl mx-auto">
-          Content creation suite. Professional tools for video editing, branding, and data scraping.
+          Content creation suite. Professional tools for video editing, branding, and graphic production.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl mx-auto">
@@ -42,6 +42,23 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             </p>
             <div className="flex items-center text-blue-400 text-xs font-semibold mt-4">
               Open Studio <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </button>
+
+          {/* Image Production Card */}
+          <button 
+            onClick={() => onNavigate('image-studio')}
+            className="group relative bg-slate-900/50 border border-slate-700 hover:border-indigo-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(99,102,241,0.15)] flex flex-col h-72"
+          >
+            <div className="bg-indigo-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <ImageIcon className="w-6 h-6 text-indigo-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-indigo-400 transition-colors">Graphic Studio</h3>
+            <p className="text-slate-400 text-xs mb-auto leading-relaxed">
+              Produce high-quality images using AI and add professional text overlays for social media or news.
+            </p>
+            <div className="flex items-center text-indigo-400 text-xs font-semibold mt-4">
+              Create Graphics <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </div>
           </button>
 
@@ -117,7 +134,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       </div>
       
       <div className="absolute bottom-6 text-slate-600 text-xs">
-        v1.6.0 • Irwan Kurnia Tools
+        v1.7.0 • Irwan Kurnia Tools
       </div>
     </div>
   );
