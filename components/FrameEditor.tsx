@@ -465,7 +465,7 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row h-screen w-full overflow-hidden bg-slate-950 text-white font-inter">
+        <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen w-full lg:overflow-hidden overflow-x-hidden bg-slate-950 text-white font-inter">
             {/* Sidebar Toggle (Mobile) */}
             <button 
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}

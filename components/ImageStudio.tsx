@@ -308,8 +308,11 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
                 setTimeout(r, 400); // Wait for background and fonts
             });
             const link = document.createElement('a');
+            
+            // Generate sanitized filename directly from the headline as requested
             const safeHeadline = (item.headline || 'graphic').replace(/[/\\?%*:|"<>]/g, '-').trim();
-            link.download = `${safeHeadline}-${i + 1}.png`;
+            link.download = `${safeHeadline}.png`;
+            
             link.href = canvas.toDataURL('image/png', 1.0);
             link.click();
             await new Promise(r => setTimeout(r, 1200)); 
@@ -317,7 +320,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row h-screen w-full overflow-hidden bg-slate-950 text-white font-inter">
+        <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen w-full lg:overflow-hidden overflow-x-hidden bg-slate-950 text-white font-inter">
             {/* Sidebar Toggle (Mobile) */}
             <button 
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -539,7 +542,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
             </div>
 
             {/* Preview Viewport */}
-            <div className="flex-1 flex flex-col items-center justify-center p-4 lg:p-8 relative overflow-hidden bg-black min-h-[500px] lg:min-h-0">
+            <div className="flex-1 flex flex-col items-center justify-center p-4 lg:p-8 relative overflow-hidden min-h-[500px] lg:min-h-0">
                 <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#475569 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
                 
                 <div className="relative z-10 flex flex-col items-center gap-4 lg:gap-6 w-full">

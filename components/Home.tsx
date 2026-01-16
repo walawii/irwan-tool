@@ -9,7 +9,7 @@ interface HomeProps {
 
 const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 relative overflow-x-hidden">
       
       {/* Background Ambience */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
@@ -18,7 +18,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         <div className="absolute top-1/2 right-1/4 w-96 h-96 bg-red-500/5 rounded-full blur-3xl"></div>
       </div>
 
-      <div className="relative z-10 max-w-6xl w-full text-center">
+      <div className="relative z-10 max-w-6xl w-full text-center my-10 lg:my-0">
         <h1 className="text-5xl md:text-7xl font-black mb-6 bg-gradient-to-r from-blue-400 via-purple-400 to-red-400 bg-clip-text text-transparent tracking-tight">
           IRWAN KURNIA
         </h1>
@@ -31,16 +31,16 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           {/* Video Editor Card */}
           <button 
             onClick={() => onNavigate('editor')}
-            className="group relative bg-slate-900/50 border border-slate-700 hover:border-blue-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] flex flex-col h-72"
+            className="group relative bg-slate-900/50 border border-slate-700 hover:border-blue-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] flex flex-col min-h-[18rem] h-auto"
           >
             <div className="bg-blue-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
               <Clapperboard className="w-6 h-6 text-blue-400" />
             </div>
             <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">Video Editor</h3>
-            <p className="text-slate-400 text-xs mb-auto leading-relaxed">
+            <p className="text-slate-400 text-xs mb-6 leading-relaxed">
               Create professional 9:16 news videos with overlay graphics, images, and text.
             </p>
-            <div className="flex items-center text-blue-400 text-xs font-semibold mt-4">
+            <div className="mt-auto flex items-center text-blue-400 text-xs font-semibold">
               Open Studio <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </div>
           </button>
@@ -48,16 +48,16 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           {/* Image Production Card */}
           <button 
             onClick={() => onNavigate('image-studio')}
-            className="group relative bg-slate-900/50 border border-slate-700 hover:border-indigo-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(99,102,241,0.15)] flex flex-col h-72"
+            className="group relative bg-slate-900/50 border border-slate-700 hover:border-indigo-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(99,102,241,0.15)] flex flex-col min-h-[18rem] h-auto"
           >
             <div className="bg-indigo-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
               <ImageIcon className="w-6 h-6 text-indigo-400" />
             </div>
             <h3 className="text-xl font-bold text-white mb-2 group-hover:text-indigo-400 transition-colors">Graphic Studio</h3>
-            <p className="text-slate-400 text-xs mb-auto leading-relaxed">
+            <p className="text-slate-400 text-xs mb-6 leading-relaxed">
               Produce high-quality images using AI and add professional text overlays for social media or news.
             </p>
-            <div className="flex items-center text-indigo-400 text-xs font-semibold mt-4">
+            <div className="mt-auto flex items-center text-indigo-400 text-xs font-semibold">
               Create Graphics <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </div>
           </button>
@@ -65,16 +65,16 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           {/* Video Overlay Maker Card */}
           <button 
             onClick={() => onNavigate('overlay')}
-            className="group relative bg-slate-900/50 border border-slate-700 hover:border-amber-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(245,158,11,0.15)] flex flex-col h-72"
+            className="group relative bg-slate-900/50 border border-slate-700 hover:border-amber-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(245,158,11,0.15)] flex flex-col min-h-[18rem] h-auto"
           >
             <div className="bg-amber-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
               <Layers className="w-6 h-6 text-amber-500" />
             </div>
             <h3 className="text-xl font-bold text-white mb-2 group-hover:text-amber-500 transition-colors">Video Overlay</h3>
-            <p className="text-slate-400 text-xs mb-auto leading-relaxed">
+            <p className="text-slate-400 text-xs mb-6 leading-relaxed">
               Tumpuk dua video dalam format 9:16. Cocok untuk video reaksi, tutorial, atau konten kreatif lainnya.
             </p>
-            <div className="flex items-center text-amber-500 text-xs font-semibold mt-4">
+            <div className="mt-auto flex items-center text-amber-500 text-xs font-semibold">
               Buat Video <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </div>
           </button>
@@ -82,16 +82,16 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           {/* Frame & Watermark Card */}
           <button 
             onClick={() => onNavigate('frames')}
-            className="group relative bg-slate-900/50 border border-slate-700 hover:border-purple-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(168,85,247,0.15)] flex flex-col h-72"
+            className="group relative bg-slate-900/50 border border-slate-700 hover:border-purple-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(168,85,247,0.15)] flex flex-col min-h-[18rem] h-auto"
           >
             <div className="bg-purple-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
               <LayoutTemplate className="w-6 h-6 text-purple-400" />
             </div>
             <h3 className="text-xl font-bold text-white mb-2 group-hover:text-purple-400 transition-colors">Frame & Brand</h3>
-            <p className="text-slate-400 text-xs mb-auto leading-relaxed">
+            <p className="text-slate-400 text-xs mb-6 leading-relaxed">
               Add custom frames and transparent watermarks to your videos for consistent branding.
             </p>
-            <div className="flex items-center text-purple-400 text-xs font-semibold mt-4">
+            <div className="mt-auto flex items-center text-purple-400 text-xs font-semibold">
               Apply Frames <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </div>
           </button>
@@ -99,16 +99,16 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           {/* Scraper Card */}
           <button 
             onClick={() => onNavigate('scraper')}
-            className="group relative bg-slate-900/50 border border-slate-700 hover:border-green-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(34,197,94,0.15)] flex flex-col h-72"
+            className="group relative bg-slate-900/50 border border-slate-700 hover:border-green-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30_rgba(34,197,94,0.15)] flex flex-col min-h-[18rem] h-auto"
           >
             <div className="bg-green-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
               <FileSpreadsheet className="w-6 h-6 text-green-400" />
             </div>
             <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-400 transition-colors">Article Scraper</h3>
-            <p className="text-slate-400 text-xs mb-auto leading-relaxed">
+            <p className="text-slate-400 text-xs mb-6 leading-relaxed">
               Extract headlines, paragraphs, and images from URLs and export directly to Excel.
             </p>
-            <div className="flex items-center text-green-400 text-xs font-semibold mt-4">
+            <div className="mt-auto flex items-center text-green-400 text-xs font-semibold">
               Open Tool <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </div>
           </button>
@@ -116,16 +116,16 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           {/* YouTube Downloader Card */}
           <button 
             onClick={() => onNavigate('shorts')}
-            className="group relative bg-slate-900/50 border border-slate-700 hover:border-red-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(239,68,68,0.15)] flex flex-col h-72"
+            className="group relative bg-slate-900/50 border border-slate-700 hover:border-red-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(239,68,68,0.15)] flex flex-col min-h-[18rem] h-auto"
           >
             <div className="bg-red-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
               <Youtube className="w-6 h-6 text-red-500" />
             </div>
             <h3 className="text-xl font-bold text-white mb-2 group-hover:text-red-500 transition-colors">Shorts Downloader</h3>
-            <p className="text-slate-400 text-xs mb-auto leading-relaxed">
+            <p className="text-slate-400 text-xs mb-6 leading-relaxed">
               Batch process YouTube Shorts links and download high-quality vertical videos.
             </p>
-            <div className="flex items-center text-red-500 text-xs font-semibold mt-4">
+            <div className="mt-auto flex items-center text-red-500 text-xs font-semibold">
               Get Started <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </div>
           </button>
@@ -133,8 +133,8 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         </div>
       </div>
       
-      <div className="absolute bottom-6 text-slate-600 text-xs">
-        v1.7.0 • Irwan Kurnia Tools
+      <div className="relative lg:absolute bottom-6 text-slate-600 text-xs mt-10 lg:mt-0">
+        v1.8.2 • Irwan Kurnia Tools
       </div>
     </div>
   );

@@ -144,9 +144,9 @@ const VideoEditor: React.FC<VideoEditorProps> = ({ onBack }) => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen w-full overflow-hidden bg-slate-950 text-white relative">
+    <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen w-full lg:overflow-hidden overflow-x-hidden bg-slate-950 text-white relative">
       <div className="absolute top-4 right-4 z-50 lg:hidden">
-         <button onClick={onBack} className="bg-slate-800 p-2 rounded-full text-slate-300"><ArrowLeft /></button>
+         <button onClick={onBack} className="bg-slate-800 p-2 rounded-full text-slate-300 shadow-lg"><ArrowLeft /></button>
       </div>
       <div className="relative z-20 flex-shrink-0">
           <Controls 

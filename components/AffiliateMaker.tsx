@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Upload, Download, Smartphone, RefreshCw, Sparkles, User, UserCheck, ImageIcon, Loader2, Play, Video, Terminal, AlertTriangle, Zap, Crown, Type as FontIcon, Newspaper, Globe, MonitorPlay } from 'lucide-react';
+import { ArrowLeft, Upload, Download, Smartphone, RefreshCw, Sparkles, User, UserCheck, ImageIcon, Loader2, Play, Video, Terminal, AlertTriangle, Zap, Crown, Type as FontIcon, Newspaper, Globe, MonitorPlay, ChevronDown, ChevronUp } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 
 interface NewsStudioProps {
@@ -14,6 +14,7 @@ const NewsStudio: React.FC<NewsStudioProps> = ({ onBack }) => {
   const [sourceImage, setSourceImage] = useState<string | null>(null);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
   // News Content
   const [headline, setHeadline] = useState('BERITA TERKINI');
@@ -261,9 +262,17 @@ const NewsStudio: React.FC<NewsStudioProps> = ({ onBack }) => {
   }, [sourceImage, generatedImages, selectedIndex, videoUrl, headline, subheadline]);
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen w-full overflow-hidden bg-slate-950 text-white font-inter">
+    <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen w-full lg:overflow-hidden overflow-x-hidden bg-slate-950 text-white font-inter">
+      {/* Sidebar Toggle (Mobile) */}
+      <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="lg:hidden fixed bottom-6 right-6 z-50 bg-red-600 p-4 rounded-full shadow-2xl text-white active:scale-90 transition-transform"
+      >
+          {isSidebarOpen ? <ChevronDown /> : <ChevronUp />}
+      </button>
+
       {/* CONTROL SIDEBAR */}
-      <div className="w-full lg:w-96 bg-slate-900 border-r border-slate-800 flex flex-col h-auto lg:h-full z-20 shadow-2xl overflow-hidden">
+      <div className={`w-full lg:w-96 bg-slate-900 border-r border-slate-800 flex flex-col transition-all duration-300 z-20 shadow-2xl overflow-hidden ${isSidebarOpen ? 'h-[70vh] lg:h-full' : 'h-0 lg:h-full'}`}>
         <div className="p-6 border-b border-slate-800 flex items-center gap-3 shrink-0">
           <button onClick={onBack} className="p-2 -ml-2 hover:bg-slate-800 rounded-full text-slate-400 transition-colors">
             <ArrowLeft className="w-5 h-5" />
@@ -360,7 +369,7 @@ const NewsStudio: React.FC<NewsStudioProps> = ({ onBack }) => {
       </div>
 
       {/* PREVIEW VIEWPORT */}
-      <div className="flex-1 flex flex-col items-center justify-center p-8 relative overflow-hidden bg-[#020202]">
+      <div className="flex-1 flex flex-col items-center justify-center p-8 relative overflow-hidden bg-[#020202] min-h-[500px] lg:min-h-0">
         <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#475569 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
         
         <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-2xl">
