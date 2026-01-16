@@ -49,7 +49,10 @@ const PreviewArea: React.FC<PreviewAreaProps> = ({ activeItem, globalState }) =>
                 Live Preview (Muted)
             </h2>
             
-            <div className="relative w-full max-w-[320px] lg:max-w-[360px] aspect-[9/16] bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-800 ring-1 ring-slate-700">
+            <div 
+                className="relative w-full max-w-[320px] lg:max-w-[360px] aspect-[9/16] bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-800 ring-1 ring-slate-700"
+                style={{ containerType: 'inline-size' }}
+            >
                 {activeItem.videoUrl ? (
                     <video 
                         key={activeItem.videoUrl} 

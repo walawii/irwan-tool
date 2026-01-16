@@ -38,25 +38,32 @@ const NewsOverlay: React.FC<NewsOverlayProps> = ({ data }) => {
 
   const colors = getColorClasses();
 
-  // We use CSS variables or direct calculations based on the container width for scaling
-  // But for this React component, we can assume a base "virtual" width of 720
+  // Base calculation width (virtual canvas width)
   const virtualWidth = 720;
   
+  // Helper to convert pixel values from 720p design to container query units
+  const toCqw = (val: number) => `${(val / virtualWidth) * 100}cqw`;
+  
   return (
-    <div className="absolute inset-0 pointer-events-none flex flex-col justify-end pb-[10%] overflow-hidden" style={{ fontSize: '10px' }}>
+    <div className="absolute inset-0 pointer-events-none flex flex-col justify-end overflow-hidden" style={{ paddingBottom: toCqw(80) }}>
       
       {/* Main Lower Third Area */}
-      <div className="w-full relative px-[5%] mb-[4%]">
+      <div className="w-full relative" style={{ paddingLeft: toCqw(32), paddingRight: toCqw(32) }}>
         
         {/* Animated Entrance Wrapper */}
         <div className="animate-slide-up flex flex-col items-start">
             
-            {/* Overlay Image (Full Width) */}
+            {/* Overlay Image (Full Width of Container, Scaled Height) */}
             {overlayImage && (
-                <div className="w-[110%] -ml-[5%] mb-[4%] relative animate-fade-in">
+                <div className="w-full relative animate-fade-in" style={{ marginBottom: toCqw(20) }}>
                     <div 
-                        className="w-full border-[3px] border-white shadow-2xl overflow-hidden bg-black"
-                        style={{ height: `${(imageHeight / virtualWidth) * 100}vw`, maxHeight: '40%' }}
+                        className="w-full border-white shadow-2xl overflow-hidden bg-black"
+                        style={{ 
+                            height: toCqw(imageHeight), 
+                            borderWidth: toCqw(4),
+                            // Allow width to exceed container slightly if needed for effect, but contained for now
+                            width: '100%' 
+                        }}
                     >
                         <img 
                             src={overlayImage} 
@@ -68,18 +75,32 @@ const NewsOverlay: React.FC<NewsOverlayProps> = ({ data }) => {
             )}
 
             {/* Breaking News Label */}
-            <div className="flex items-center gap-2 mb-1">
-                <div className={`${colors.bgMain} text-white text-[8px] lg:text-[10px] font-black uppercase px-2 py-0.5 tracking-tighter skew-x-[-10deg]`}>
+            <div className="flex items-center gap-1" style={{ marginBottom: toCqw(5) }}>
+                <div 
+                    className={`${colors.bgMain} text-white font-black uppercase tracking-tighter skew-x-[-10deg]`}
+                    style={{
+                        fontSize: toCqw(20),
+                        padding: `${toCqw(4)} ${toCqw(16)}`
+                    }}
+                >
                     Breaking News
                 </div>
-                <div className="flex-1 h-0.5 bg-white/20"></div>
+                {/* Decoration Line */}
+                <div className="h-0.5 bg-white/20" style={{ width: toCqw(100), height: toCqw(2) }}></div>
             </div>
 
             {/* Headline Box */}
-            <div className="bg-white/95 backdrop-blur-sm border-l-4 lg:border-l-8 border-l-black shadow-2xl p-2 lg:p-4 transform skew-x-[-2deg] mb-1">
+            <div 
+                className={`bg-white/95 backdrop-blur-sm border-l-black shadow-2xl transform skew-x-[-2deg]`}
+                style={{
+                    borderLeftWidth: toCqw(15),
+                    padding: `${toCqw(12)} ${toCqw(24)}`,
+                    marginBottom: toCqw(8)
+                }}
+            >
                 <h1 
                     className="text-black font-black uppercase leading-none news-font transform skew-x-[2deg] drop-shadow-sm"
-                    style={{ fontSize: `${(headlineSize / virtualWidth) * 100}%`, minFontSize: '12px' }}
+                    style={{ fontSize: toCqw(headlineSize) }}
                 >
                     {headline || "HEADLINE TEXT HERE"}
                 </h1>
@@ -87,10 +108,15 @@ const NewsOverlay: React.FC<NewsOverlayProps> = ({ data }) => {
 
             {/* Sub-Headline Box */}
             {subheadline && (
-                <div className={`inline-block ${colors.bgDark}/90 backdrop-blur-md px-3 lg:px-4 py-1 lg:py-2 transform skew-x-[-2deg] shadow-lg max-w-[90%]`}>
+                <div 
+                    className={`inline-block ${colors.bgDark}/95 backdrop-blur-md transform skew-x-[-2deg] shadow-lg max-w-[95%]`}
+                    style={{
+                        padding: `${toCqw(10)} ${toCqw(20)}`
+                    }}
+                >
                     <h2 
                         className="text-white font-bold uppercase leading-tight news-font transform skew-x-[2deg]"
-                        style={{ fontSize: `${(subheadlineSize / virtualWidth) * 100}%`, minFontSize: '10px' }}
+                        style={{ fontSize: toCqw(subheadlineSize) }}
                     >
                         {subheadline}
                     </h2>
