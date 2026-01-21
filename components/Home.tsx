@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Clapperboard, FileSpreadsheet, ArrowRight, Youtube, LayoutTemplate, Layers, ImageIcon } from 'lucide-react';
+import { Clapperboard, FileSpreadsheet, ArrowRight, Youtube, LayoutTemplate, Layers, ImageIcon, Facebook } from 'lucide-react';
 import { ViewState } from '../types';
 
 interface HomeProps {
@@ -41,7 +41,24 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
               Create professional 9:16 news videos with overlay graphics, images, and text.
             </p>
             <div className="mt-auto flex items-center text-blue-400 text-xs font-semibold">
-              Open Studio <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+              Open Editor <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </button>
+
+          {/* Facebook Scheduler Card (NEW) */}
+          <button 
+            onClick={() => onNavigate('fb-scheduler')}
+            className="group relative bg-slate-900/50 border border-slate-700 hover:border-[#1877F2] rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(24,119,242,0.15)] flex flex-col min-h-[18rem] h-auto"
+          >
+            <div className="bg-blue-600/10 w-12 h-12 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <Facebook className="w-6 h-6 text-[#1877F2]" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-[#1877F2] transition-colors">Reels Scheduler</h3>
+            <p className="text-slate-400 text-xs mb-6 leading-relaxed">
+              Upload and schedule Facebook Reels directly to your Pages with Meta Business integration.
+            </p>
+            <div className="mt-auto flex items-center text-[#1877F2] text-xs font-semibold">
+              Open Scheduler <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </div>
           </button>
 
@@ -134,7 +151,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
       </div>
       
       <div className="relative lg:absolute bottom-6 text-slate-600 text-xs mt-10 lg:mt-0">
-        v1.8.2 • Irwan Kurnia Tools
+        v2.0.0 • Irwan Kurnia Tools
       </div>
     </div>
   );

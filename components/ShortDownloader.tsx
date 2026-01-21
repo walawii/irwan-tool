@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { ArrowLeft, Youtube, Download, Trash2, Copy, Plus, List, Play, Loader2, CheckCircle, AlertCircle, RefreshCw, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Youtube, Download, Trash2, Copy, Plus, List, Loader2, CheckCircle, AlertCircle, RefreshCw, ExternalLink, Play } from 'lucide-react';
 
 interface YouTubeVideo {
     id: string;
@@ -14,12 +15,14 @@ interface ShortDownloaderProps {
   onBack: () => void;
 }
 
-// Daftar instansi Cobalt yang diperbarui dan lebih stabil
+// Daftar instansi Cobalt yang diperbarui dan lebih stabil (Mix of official and community instances)
 const COBALT_INSTANCES = [
     'https://api.cobalt.tools/api/json',
     'https://cobalt.api.ryuko.space/api/json',
-    'https://api.v7.cobalt.tools/api/json',
-    'https://cobalt-api.kwiateusz.pl/api/json'
+    'https://cobalt-api.kwiateusz.pl/api/json',
+    'https://tools.betweenthelines.org/api/json',
+    'https://api.server.cobalt.tools/api/json',
+    'https://cobalt.154.53.53.53.nip.io/api/json'
 ];
 
 const ShortDownloader: React.FC<ShortDownloaderProps> = ({ onBack }) => {
@@ -78,12 +81,14 @@ const ShortDownloader: React.FC<ShortDownloaderProps> = ({ onBack }) => {
   const downloadFileInternal = async (video: YouTubeVideo): Promise<boolean> => {
     setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'processing', error: undefined } : v));
 
+    // Updated request body to match standard Cobalt API v7/v10
     const requestBody = {
         url: video.url,
-        videoQuality: '720',
+        vQuality: '720', // Changed from videoQuality to vQuality
         vCodec: 'h264',
+        filenamePattern: 'classic',
         isAudioOnly: false,
-        removePlayer: true
+        disableMetadata: true
     };
 
     // Mencoba beberapa instansi API dan beberapa proxy
@@ -114,22 +119,28 @@ const ShortDownloader: React.FC<ShortDownloaderProps> = ({ onBack }) => {
 
             if (response && response.ok) {
                 const data = await response.json();
-                if (data.status === 'stream' || data.status === 'redirect' || data.url) {
+                
+                // Handle different response structures (v7 vs v10)
+                // v7: status: 'stream' | 'redirect', url: '...'
+                // v10: status: 'tunnel' | 'redirect', url: '...'
+                if (['stream', 'redirect', 'tunnel'].includes(data.status) || data.url) {
                     const directUrl = data.url;
                     
-                    // Simpan URL unduhan agar bisa diakses jika download otomatis gagal
-                    setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'done', downloadUrl: directUrl } : v));
+                    if (directUrl) {
+                        // Simpan URL unduhan agar bisa diakses jika download otomatis gagal
+                        setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'done', downloadUrl: directUrl } : v));
 
-                    // Memicu pengunduhan browser
-                    const link = document.createElement('a');
-                    link.href = directUrl;
-                    link.setAttribute('download', `shorts-${video.id}.mp4`);
-                    link.target = '_blank';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    
-                    return true; 
+                        // Memicu pengunduhan browser
+                        const link = document.createElement('a');
+                        link.href = directUrl;
+                        link.setAttribute('download', `shorts-${video.id}.mp4`);
+                        link.target = '_blank';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        
+                        return true; 
+                    }
                 }
             }
         } catch (err: any) {
@@ -137,7 +148,7 @@ const ShortDownloader: React.FC<ShortDownloaderProps> = ({ onBack }) => {
         }
     }
 
-    setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'error', error: 'Gagal mengambil video otomatis. Server sedang sibuk atau link tidak valid.' } : v));
+    setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'error', error: 'Gagal mengambil video. Silakan gunakan tombol Manual.' } : v));
     return false;
   };
 

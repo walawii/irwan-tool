@@ -110,4 +110,4 @@ export interface ScrapedArticle {
   imageUrl: string;
 }
 
-export type ViewState = 'home' | 'editor' | 'scraper' | 'shorts' | 'frames' | 'overlay' | 'image-studio';
+export type ViewState = 'home' | 'editor' | 'scraper' | 'shorts' | 'frames' | 'overlay' | 'image-studio' | 'fb-scheduler';

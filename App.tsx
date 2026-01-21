@@ -7,6 +7,7 @@ import ShortDownloader from './components/ShortDownloader';
 import FrameEditor from './components/FrameEditor';
 import VideoOverlayMaker from './components/VideoOverlayMaker';
 import ImageStudio from './components/ImageStudio';
+import FacebookScheduler from './components/FacebookScheduler';
 import { ViewState } from './types';
 
 const App: React.FC = () => {
@@ -40,6 +41,10 @@ const App: React.FC = () => {
 
       {currentView === 'image-studio' && (
         <ImageStudio onBack={() => setCurrentView('home')} />
+      )}
+
+      {currentView === 'fb-scheduler' && (
+        <FacebookScheduler onBack={() => setCurrentView('home')} />
       )}
     </>
   );
