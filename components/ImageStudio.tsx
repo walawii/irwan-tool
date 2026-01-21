@@ -320,7 +320,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen w-full lg:overflow-hidden overflow-x-hidden bg-slate-950 text-white font-inter">
+        <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen w-full lg:overflow-hidden bg-slate-950 text-white font-inter">
             {/* Sidebar Toggle (Mobile) */}
             <button 
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -330,7 +330,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
             </button>
 
             {/* Sidebar */}
-            <div className={`w-full lg:w-96 bg-slate-900 border-r border-slate-800 flex flex-col transition-all duration-300 z-20 shadow-2xl overflow-hidden ${isSidebarOpen ? 'h-[70vh] lg:h-full' : 'h-0 lg:h-full'}`}>
+            <div className={`w-full lg:w-96 bg-slate-900 border-r border-slate-800 flex flex-col transition-all duration-300 z-20 shadow-2xl overflow-hidden ${isSidebarOpen ? 'h-auto max-h-[60vh] lg:h-full lg:max-h-full' : 'h-0 lg:h-full'}`}>
                 <div className="p-4 lg:p-6 border-b border-slate-800 flex items-center gap-3 shrink-0">
                     <button onClick={onBack} className="p-2 -ml-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
                         <ArrowLeft className="w-5 h-5" />
@@ -542,7 +542,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
             </div>
 
             {/* Preview Viewport */}
-            <div className="flex-1 flex flex-col items-center justify-center p-4 lg:p-8 relative overflow-hidden min-h-[500px] lg:min-h-0">
+            <div className="flex-1 flex flex-col items-center justify-center p-4 lg:p-8 relative overflow-hidden min-h-[500px] lg:min-h-0 lg:overflow-y-auto pb-20 lg:pb-0">
                 <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#475569 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
                 
                 <div className="relative z-10 flex flex-col items-center gap-4 lg:gap-6 w-full">

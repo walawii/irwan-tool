@@ -262,7 +262,7 @@ const NewsStudio: React.FC<NewsStudioProps> = ({ onBack }) => {
   }, [sourceImage, generatedImages, selectedIndex, videoUrl, headline, subheadline]);
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen w-full lg:overflow-hidden overflow-x-hidden bg-slate-950 text-white font-inter">
+    <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen w-full lg:overflow-hidden bg-slate-950 text-white font-inter">
       {/* Sidebar Toggle (Mobile) */}
       <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -272,7 +272,7 @@ const NewsStudio: React.FC<NewsStudioProps> = ({ onBack }) => {
       </button>
 
       {/* CONTROL SIDEBAR */}
-      <div className={`w-full lg:w-96 bg-slate-900 border-r border-slate-800 flex flex-col transition-all duration-300 z-20 shadow-2xl overflow-hidden ${isSidebarOpen ? 'h-[70vh] lg:h-full' : 'h-0 lg:h-full'}`}>
+      <div className={`w-full lg:w-96 bg-slate-900 border-r border-slate-800 flex flex-col transition-all duration-300 z-20 shadow-2xl overflow-hidden ${isSidebarOpen ? 'h-auto max-h-[60vh] lg:h-full lg:max-h-full' : 'h-0 lg:h-full'}`}>
         <div className="p-6 border-b border-slate-800 flex items-center gap-3 shrink-0">
           <button onClick={onBack} className="p-2 -ml-2 hover:bg-slate-800 rounded-full text-slate-400 transition-colors">
             <ArrowLeft className="w-5 h-5" />
@@ -369,10 +369,10 @@ const NewsStudio: React.FC<NewsStudioProps> = ({ onBack }) => {
       </div>
 
       {/* PREVIEW VIEWPORT */}
-      <div className="flex-1 flex flex-col items-center justify-center p-8 relative overflow-hidden bg-[#020202] min-h-[500px] lg:min-h-0">
+      <div className="flex-1 flex flex-col items-center justify-center p-8 relative overflow-hidden bg-[#020202] min-h-[500px] lg:min-h-0 lg:overflow-y-auto">
         <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#475569 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
         
-        <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-2xl">
+        <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-2xl py-10 lg:py-0">
             <div className="flex items-center gap-3 text-slate-500 text-[10px] font-bold uppercase tracking-widest bg-slate-900/50 px-5 py-2 rounded-full border border-slate-800">
                 <Smartphone className="w-3 h-3" /> Vertical Monitor 9:16 {aiEngine === 'pro' && <Crown className="w-3 h-3 text-amber-500" />}
             </div>
@@ -417,7 +417,7 @@ const NewsStudio: React.FC<NewsStudioProps> = ({ onBack }) => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 w-full max-w-md">
+            <div className="grid grid-cols-3 gap-3 w-full max-w-md pb-20 lg:pb-0">
                 {[0, 1, 2].map((idx) => (
                     <button key={idx} disabled={isAiLoading || isVideoLoading || !generatedImages[idx]} onClick={() => { setSelectedIndex(idx); setVideoUrl(null); }} className={`relative aspect-[9/16] rounded-2xl overflow-hidden border-2 transition-all ${selectedIndex === idx ? 'border-red-500 ring-4 ring-red-500/20' : 'border-slate-800 hover:border-slate-600'}`}>
                         {generatedImages[idx] ? <img src={generatedImages[idx]} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-900/50 flex items-center justify-center"><ImageIcon className="w-6 h-6 text-slate-800" /></div>}

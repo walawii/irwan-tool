@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { ArrowLeft, Facebook, Upload, Calendar, Clock, Video, Loader2, CheckCircle, AlertCircle, Plus, Trash2, Settings, User } from 'lucide-react';
+import { ArrowLeft, Facebook, Upload, Calendar, Clock, Video, Loader2, CheckCircle, AlertCircle, Plus, Trash2, Settings, User, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface FacebookSchedulerProps {
   onBack: () => void;
@@ -30,6 +30,7 @@ const FacebookScheduler: React.FC<FacebookSchedulerProps> = ({ onBack }) => {
   const [pages, setPages] = useState<FBPage[]>([]);
   const [selectedPage, setSelectedPage] = useState<FBPage | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
   // Upload State
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -159,8 +160,16 @@ const FacebookScheduler: React.FC<FacebookSchedulerProps> = ({ onBack }) => {
 
       <div className="flex flex-col lg:flex-row h-full flex-1">
         
+        {/* Mobile Toggle */}
+        <button 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="lg:hidden w-full bg-slate-900 border-b border-slate-800 p-3 flex items-center justify-center gap-2 text-sm font-bold text-blue-400"
+        >
+            {isSidebarOpen ? 'Hide Accounts' : 'Show Accounts'} {isSidebarOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        </button>
+
         {/* Left Sidebar: Account & Page Selection */}
-        <div className="w-full lg:w-80 bg-slate-900 border-r border-slate-800 p-6 flex flex-col gap-6">
+        <div className={`w-full lg:w-80 bg-slate-900 border-r border-slate-800 p-6 flex flex-col gap-6 transition-all duration-300 ${isSidebarOpen ? 'h-auto max-h-[50vh] overflow-y-auto lg:h-full lg:max-h-full' : 'h-0 overflow-hidden lg:h-full lg:max-h-full p-0'}`}>
             {!isConnected ? (
                 <div className="space-y-4">
                     <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Connect Account</h2>
@@ -215,8 +224,8 @@ const FacebookScheduler: React.FC<FacebookSchedulerProps> = ({ onBack }) => {
         </div>
 
         {/* Main Content: Scheduler Form */}
-        <div className="flex-1 p-6 lg:p-10 overflow-y-auto">
-             <div className="max-w-4xl mx-auto space-y-8">
+        <div className="flex-1 p-4 lg:p-10 overflow-y-auto min-h-0">
+             <div className="max-w-4xl mx-auto space-y-8 pb-20 lg:pb-0">
                 
                 {/* Form Area */}
                 <div className="bg-slate-900 rounded-2xl p-6 lg:p-8 border border-slate-800 shadow-xl">
