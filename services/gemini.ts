@@ -35,22 +35,49 @@ const wrapText = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
 const loadImageWithFallback = async (url: string): Promise<HTMLImageElement | null> => {
     const load = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image();
-        img.crossOrigin = "anonymous";
+        img.crossOrigin = "anonymous"; // Critical for canvas export
         img.onload = () => resolve(img);
         img.onerror = () => reject(new Error(`Failed to load ${src}`));
         img.src = src;
     });
 
+    // 1. Local Blobs or Data URLs (Always try these directly first)
+    if (url.startsWith('blob:') || url.startsWith('data:')) {
+        try {
+            return await load(url);
+        } catch (e) {
+            console.warn("Local image load failed", e);
+            return null;
+        }
+    }
+
+    // 2. WSRV.NL - Excellent image proxy that handles CORS and format conversion (output=png)
+    try {
+        return await load(`https://wsrv.nl/?url=${encodeURIComponent(url)}&output=png`);
+    } catch (e) {
+        console.warn("WSRV proxy failed, trying next...", e);
+    }
+
+    // 3. AllOrigins - Raw proxy
+    try {
+        return await load(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+    } catch (e) {
+        console.warn("AllOrigins proxy failed, trying next...", e);
+    }
+
+    // 4. CorsProxy.io
+    try {
+        return await load(`https://corsproxy.io/?${encodeURIComponent(url)}`);
+    } catch (e) {
+        console.warn("CorsProxy failed, trying direct...", e);
+    }
+
+    // 5. Direct Load (Last resort - likely to fail CORS on canvas if others failed, but worth a try)
     try {
         return await load(url);
     } catch (e) {
-        console.warn("Direct image load failed, trying proxy...", e);
-        try {
-            return await load(`https://corsproxy.io/?${encodeURIComponent(url)}`);
-        } catch (e2) {
-             console.warn("Proxy image load failed", e2);
-             return null;
-        }
+        console.error("All image load attempts failed for:", url);
+        return null;
     }
 };
 
@@ -97,6 +124,7 @@ export const exportCompositedVideo = async (
 
       let overlayImg: HTMLImageElement | null = null;
       if (item.overlayImage) {
+        onProgress("Loading image assets...");
         overlayImg = await loadImageWithFallback(item.overlayImage);
       }
 

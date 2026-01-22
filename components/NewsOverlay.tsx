@@ -43,6 +43,16 @@ const NewsOverlay: React.FC<NewsOverlayProps> = ({ data }) => {
   
   // Helper to convert pixel values from 720p design to container query units
   const toCqw = (val: number) => `${(val / virtualWidth) * 100}cqw`;
+
+  // Use proxy for remote URLs to ensure preview matches export capability
+  const getDisplayUrl = (url: string | null) => {
+      if (!url) return null;
+      if (url.startsWith('blob:') || url.startsWith('data:')) return url;
+      // Use wsrv.nl to proxy remote images, matching the export logic
+      return `https://wsrv.nl/?url=${encodeURIComponent(url)}&output=png`;
+  };
+
+  const finalImageUrl = getDisplayUrl(overlayImage);
   
   return (
     <div className="absolute inset-0 pointer-events-none flex flex-col justify-end overflow-hidden" style={{ paddingBottom: toCqw(80) }}>
@@ -54,7 +64,7 @@ const NewsOverlay: React.FC<NewsOverlayProps> = ({ data }) => {
         <div className="animate-slide-up flex flex-col items-start">
             
             {/* Overlay Image (Full Width of Container, Scaled Height) */}
-            {overlayImage && (
+            {finalImageUrl && (
                 <div className="w-full relative animate-fade-in" style={{ marginBottom: toCqw(20) }}>
                     <div 
                         className="w-full border-white shadow-2xl overflow-hidden bg-black"
@@ -66,9 +76,15 @@ const NewsOverlay: React.FC<NewsOverlayProps> = ({ data }) => {
                         }}
                     >
                         <img 
-                            src={overlayImage} 
+                            src={finalImageUrl} 
                             alt="News Graphic" 
                             className="w-full h-full object-cover"
+                            onError={(e) => {
+                                // Fallback to original if proxy fails for some reason
+                                if (overlayImage && e.currentTarget.src !== overlayImage) {
+                                    e.currentTarget.src = overlayImage;
+                                }
+                            }}
                         />
                     </div>
                 </div>
