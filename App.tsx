@@ -8,6 +8,7 @@ import FrameEditor from './components/FrameEditor';
 import VideoOverlayMaker from './components/VideoOverlayMaker';
 import ImageStudio from './components/ImageStudio';
 import FacebookScheduler from './components/FacebookScheduler';
+import VideoSplitter from './components/VideoSplitter';
 import { ViewState } from './types';
 
 const App: React.FC = () => {
@@ -45,6 +46,10 @@ const App: React.FC = () => {
 
       {currentView === 'fb-scheduler' && (
         <FacebookScheduler onBack={() => setCurrentView('home')} />
+      )}
+
+      {currentView === 'video-splitter' && (
+        <VideoSplitter onBack={() => setCurrentView('home')} />
       )}
     </>
   );

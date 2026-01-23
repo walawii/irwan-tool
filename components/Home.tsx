@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Clapperboard, FileSpreadsheet, ArrowRight, Youtube, LayoutTemplate, Layers, ImageIcon, Facebook } from 'lucide-react';
+import { Clapperboard, FileSpreadsheet, ArrowRight, Youtube, LayoutTemplate, Layers, ImageIcon, Facebook, Scissors } from 'lucide-react';
 import { ViewState } from '../types';
 
 interface HomeProps {
@@ -45,7 +45,24 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             </div>
           </button>
 
-          {/* Facebook Scheduler Card (NEW) */}
+          {/* Auto Splitter Card (NEW) */}
+          <button 
+            onClick={() => onNavigate('video-splitter')}
+            className="group relative bg-slate-900/50 border border-slate-700 hover:border-pink-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(236,72,153,0.15)] flex flex-col min-h-[18rem] h-auto"
+          >
+            <div className="bg-pink-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <Scissors className="w-6 h-6 text-pink-500" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-pink-500 transition-colors">Auto Splitter</h3>
+            <p className="text-slate-400 text-xs mb-6 leading-relaxed">
+              Automatically chop videos into 15-second clips. Converts any video to 9:16 vertical format.
+            </p>
+            <div className="mt-auto flex items-center text-pink-500 text-xs font-semibold">
+              Split Video <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </button>
+
+          {/* Facebook Scheduler Card */}
           <button 
             onClick={() => onNavigate('fb-scheduler')}
             className="group relative bg-slate-900/50 border border-slate-700 hover:border-[#1877F2] rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(24,119,242,0.15)] flex flex-col min-h-[18rem] h-auto"
