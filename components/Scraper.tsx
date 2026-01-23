@@ -18,6 +18,20 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
   // Ref to control stopping the loop
   const abortScanRef = useRef<boolean>(false);
 
+  // Helper with timeout to fail fast if proxy hangs
+  const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeout);
+      try {
+          const response = await fetch(url, { ...options, signal: controller.signal });
+          clearTimeout(id);
+          return response;
+      } catch (e) {
+          clearTimeout(id);
+          throw e;
+      }
+  };
+
   const fetchHtmlContent = async (url: string): Promise<string> => {
     // 1. Normalize URL
     let targetUrl = url.trim();
@@ -25,38 +39,38 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
         targetUrl = 'https://' + targetUrl;
     }
 
-    // 2. Try CorsProxy.io (Fast & Reliable for many 403 sites)
+    // 2. Try CorsProxy.io (Fastest)
     try {
-        const response = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
+        const response = await fetchWithTimeout(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
         if (response.ok) {
             return await response.text();
         }
     } catch (e) {
-        console.warn("CorsProxy.io failed:", e);
+        // Continue
     }
 
-    // 3. Try Primary Proxy (AllOrigins)
+    // 3. Try Primary Proxy (AllOrigins) - Robust
     try {
-        const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
+        const response = await fetchWithTimeout(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
         if (response.ok) {
             const data = await response.json();
             if (data.contents) return data.contents;
         }
     } catch (e) {
-        console.warn("Primary proxy (AllOrigins) failed:", e);
+        // Continue
     }
 
     // 4. Try Secondary Proxy (CodeTabs)
     try {
-        const response = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`);
+        const response = await fetchWithTimeout(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`);
         if (response.ok) {
             return await response.text();
         }
     } catch (e) {
-        console.warn("Secondary proxy (CodeTabs) failed:", e);
+        // Continue
     }
 
-    throw new Error('Could not fetch website content. The site may strictly block proxies (403) or is unreachable.');
+    throw new Error('Could not fetch content (Blocked/Timeout).');
   };
 
   const resolveUrl = (baseUrl: string, relativeUrl: string): string => {
@@ -108,16 +122,10 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
           const candidates = Array.from(doc.querySelectorAll('article, [role="main"], .post-content, .entry-content, .article-body, #content, main'));
           let contentContainer = candidates.length > 0 ? candidates[0] : doc.body;
           
-          // If body is fallback, try to filter out header/footer
-          // Better: Look for paragraph with substantial text
           const paragraphs = Array.from(contentContainer.querySelectorAll('p'));
           
           for (const p of paragraphs) {
               const text = cleanText(p.innerText);
-              // Filter logic:
-              // - Must be reasonably long (>40 chars)
-              // - Shouldn't look like a menu item (no high density of links, simplistic check here)
-              // - Shouldn't be copyright footer
               if (text.length > 50 && !text.toLowerCase().includes('copyright') && !text.toLowerCase().includes('all rights reserved')) {
                   finalDescription = text;
                   break;
@@ -152,24 +160,19 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
           let maxScore = 0;
 
           for (const img of images) {
-              // Get the real source (handle lazy loading)
               const src = img.getAttribute('src') || 
                           img.getAttribute('data-src') || 
                           img.getAttribute('data-original') ||
                           img.getAttribute('data-url');
               
               if (!src || src.startsWith('data:')) continue;
-              
-              // Skip SVG icons or small UI elements
               if (src.endsWith('.svg') || src.includes('icon') || src.includes('logo')) continue;
 
-              // Check dimensions if available
               const width = parseFloat(img.getAttribute('width') || '0');
               const height = parseFloat(img.getAttribute('height') || '0');
               
-              // Simple scoring: width * height, or rudimentary check if no dimensions
               let score = width * height;
-              if (width === 0) score = 100; // Give benefit of doubt if no size attr
+              if (width === 0) score = 100; // Give benefit of doubt
 
               if (score > maxScore) {
                   maxScore = score;
@@ -178,7 +181,6 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
           }
       }
 
-      // Final cleanup: Resolve relative URLs
       if (imgUrl) {
           imgUrl = resolveUrl(pageUrl, imgUrl);
       }
@@ -192,52 +194,57 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
       };
   };
 
+  // Helper for Parallel Processing
+  const processUrlQueue = async (urls: string[], concurrency: number) => {
+      let currentIndex = 0;
+      let completed = 0;
+      const total = urls.length;
+
+      const worker = async () => {
+          while (currentIndex < total && !abortScanRef.current) {
+              const index = currentIndex++;
+              const url = urls[index];
+              setScanProgress(`Processing ${completed}/${total} ...`);
+              
+              try {
+                  const htmlContent = await fetchHtmlContent(url);
+                  const article = extractArticleData(htmlContent, url);
+                  
+                  if (article.title && article.title !== 'No Title Found') {
+                      setArticles(prev => [article, ...prev]);
+                  }
+              } catch (err) {
+                  console.warn(`Failed: ${url}`);
+              } finally {
+                  completed++;
+                  setScanProgress(`Processed ${completed}/${total}`);
+              }
+          }
+      };
+
+      const workers = Array.from({ length: concurrency }, () => worker());
+      await Promise.all(workers);
+  };
+
   const handleBatchScrape = async () => {
-    // Split by newline and filter empty lines
     const urls = urlInput.split('\n').map(u => u.trim()).filter(u => u.length > 0);
-    
     if (urls.length === 0) return;
     
     setIsLoading(true);
     setError(null);
-    setScanProgress('');
     abortScanRef.current = false;
 
-    let processedCount = 0;
-
-    for (const url of urls) {
-        if (abortScanRef.current) break;
-
-        setScanProgress(`Processing ${processedCount + 1}/${urls.length}: ${url.slice(0, 30)}...`);
-
-        try {
-            // Normalize input for the ID/URL
-            let targetUrl = url;
-            if (!/^https?:\/\//i.test(targetUrl)) targetUrl = 'https://' + targetUrl;
-
-            const htmlContent = await fetchHtmlContent(targetUrl);
-            const article = extractArticleData(htmlContent, targetUrl);
-            
-            setArticles(prev => [article, ...prev]);
-
-        } catch (err: any) {
-            console.error(`Failed to scrape ${url}`, err);
-        }
-        
-        processedCount++;
-        // Small delay to prevent rate limiting
-        await new Promise(r => setTimeout(r, 500));
-    }
+    // Run 5 requests in parallel (Speed Boost)
+    await processUrlQueue(urls, 5);
 
     setIsLoading(false);
     setScanProgress('');
     if (!abortScanRef.current) {
-        setUrlInput(''); // Clear input only if fully completed
+        setUrlInput(''); 
     }
   };
 
   const handleHomeScan = async () => {
-      // Use the first non-empty line as the homepage URL
       const urls = urlInput.split('\n').map(u => u.trim()).filter(u => u.length > 0);
       if (urls.length === 0) return;
       const baseUrlInput = urls[0];
@@ -245,10 +252,9 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
       abortScanRef.current = false;
       setIsLoading(true);
       setError(null);
-      setScanProgress('Fetching homepage...');
+      setScanProgress('Fetching homepage map...');
 
       try {
-          // 1. Fetch Homepage
           let baseUrl = baseUrlInput;
           if (!/^https?:\/\//i.test(baseUrl)) baseUrl = 'https://' + baseUrl;
           
@@ -256,11 +262,9 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
           const parser = new DOMParser();
           const doc = parser.parseFromString(homeHtml, 'text/html');
           
-          // 2. Extract Links
           const anchorTags = Array.from(doc.querySelectorAll('a'));
           const origin = new URL(baseUrl).origin;
           
-          // Filter unique and valid internal links
           const foundUrls = new Set<string>();
           anchorTags.forEach(a => {
               try {
@@ -268,54 +272,30 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
                   if (!href) return;
                   if (href.startsWith('#') || href.startsWith('javascript:')) return;
 
-                  // Resolve absolute URL
                   const fullUrl = resolveUrl(baseUrl, href);
                   
-                  // Rule: Must be same domain, not the homepage itself, and not a file
                   if (fullUrl.startsWith(origin) && 
                       fullUrl !== baseUrl && 
                       fullUrl !== baseUrl + '/' &&
-                      !fullUrl.match(/\.(pdf|zip|png|jpg|jpeg|gif)$/i)) {
+                      !fullUrl.match(/\.(pdf|zip|png|jpg|jpeg|gif|css|js)$/i)) {
                       foundUrls.add(fullUrl);
                   }
-              } catch (e) {
-                  // invalid url
-              }
+              } catch (e) { }
           });
 
           const linksToScrape = Array.from(foundUrls);
           
           if (linksToScrape.length === 0) {
-              setError('No valid internal links found on this page.');
+              setError('No valid internal links found.');
               setIsLoading(false);
               return;
           }
 
-          // 3. Process Links Sequentially
-          let processedCount = 0;
-          const maxLimit = 10; // Limit auto-scan to 10 to avoid huge waits
+          // Increased limit due to faster processing
+          const maxLimit = 20; 
           const limitedLinks = linksToScrape.slice(0, maxLimit);
 
-          for (const link of limitedLinks) {
-              if (abortScanRef.current) break;
-
-              setScanProgress(`Scraping ${processedCount + 1}/${limitedLinks.length}: ${link.slice(0, 40)}...`);
-              
-              try {
-                  const html = await fetchHtmlContent(link);
-                  const article = extractArticleData(html, link);
-                  
-                  // Only add if it looks like an article (has a title and some text)
-                  if (article.title && article.title !== 'No Title Found' && article.firstParagraph !== 'No description found') {
-                      setArticles(prev => [article, ...prev]);
-                  }
-              } catch (e) {
-                  console.warn(`Failed to scrape ${link}`, e);
-              }
-
-              processedCount++;
-              await new Promise(r => setTimeout(r, 800));
-          }
+          await processUrlQueue(limitedLinks, 5);
 
       } catch (err: any) {
           setError(err.message || 'Failed to scan homepage.');
@@ -332,24 +312,13 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
 
   const handleExportExcel = () => {
     if (articles.length === 0) return;
-
-    // Create array of arrays for exact column mapping
     const headers = ["Judul", "Paragraf Pertama", "URL Gambar"];
-    
-    const rows = [...articles].reverse().map(item => [
-        item.title,
-        item.firstParagraph,
-        item.imageUrl
-    ]);
-    
+    const rows = [...articles].reverse().map(item => [item.title, item.firstParagraph, item.imageUrl]);
     const data = [headers, ...rows];
-
     const ws = XLSX.utils.aoa_to_sheet(data);
     ws['!cols'] = [{ wch: 50 }, { wch: 100 }, { wch: 50 }];
-
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Scraped Data");
-    
     XLSX.writeFile(wb, `scraped_articles_${Date.now()}.xlsx`);
   };
 
@@ -357,10 +326,8 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
     setArticles(prev => prev.filter(a => a.id !== id));
   };
 
-  // Helper to ensure image loads via proxy if needed
   const getDisplayImage = (url: string) => {
       if (!url) return null;
-      // Use wsrv.nl as a reliable image proxy to bypass CORS/Hotlink protection
       return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=200&h=200&fit=cover`;
   };
 
@@ -375,7 +342,7 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
             </button>
             <h1 className="text-xl font-bold bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent flex items-center gap-2">
                 <FileSpreadsheet className="w-6 h-6 text-green-500" />
-                Article Scraper
+                Article Scraper <span className="text-[10px] bg-green-900/50 px-2 py-0.5 rounded text-green-300">Turbo</span>
             </h1>
         </div>
         
@@ -476,7 +443,6 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
                                         alt="" 
                                         className="w-full h-full object-cover" 
                                         onError={(e) => {
-                                            // Fallback if proxy fails, show original (might fail CORS) or placeholder
                                             if (item.imageUrl && e.currentTarget.src !== item.imageUrl) {
                                                 e.currentTarget.src = item.imageUrl;
                                             } else {
