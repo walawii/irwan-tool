@@ -74,31 +74,66 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
       const parser = new DOMParser();
       const doc = parser.parseFromString(htmlContent, 'text/html');
 
-      // Extraction Logic
-      // 1. Title
+      const cleanText = (text: string) => text.replace(/\s+/g, ' ').trim();
+
+      // 1. Title Extraction
       const ogTitle = doc.querySelector('meta[property="og:title"]')?.getAttribute('content');
       const twitterTitle = doc.querySelector('meta[name="twitter:title"]')?.getAttribute('content');
       const h1 = doc.querySelector('h1')?.innerText;
-      const title = ogTitle || twitterTitle || h1 || doc.title || 'No Title Found';
+      const title = cleanText(ogTitle || twitterTitle || h1 || doc.title || 'No Title Found');
 
-      // 2. First Paragraph
-      const ogDesc = doc.querySelector('meta[property="og:description"]')?.getAttribute('content');
-      const metaDesc = doc.querySelector('meta[name="description"]')?.getAttribute('content');
-      let firstP = '';
+      // 2. Description / Content Extraction
+      let finalDescription = '';
       
-      // Try to find the main article body first to avoid footer/sidebar text
-      const articleBody = doc.querySelector('article') || doc.querySelector('main') || doc.body;
-      const paragraphs = articleBody.querySelectorAll('p');
-      
-      for (const p of paragraphs) {
-        const text = p.innerText.trim();
-        // Filter out short menu/copyright text, must be substantial
-        if (text.length > 60) {
-            firstP = text;
-            break;
-        }
+      // Strategy A: JSON-LD (Structured Data)
+      const jsonLdScripts = doc.querySelectorAll('script[type="application/ld+json"]');
+      for (const script of jsonLdScripts) {
+          try {
+              const json = JSON.parse(script.textContent || '{}');
+              const obj = Array.isArray(json) ? json[0] : json;
+              if (obj && (obj['@type'] === 'NewsArticle' || obj['@type'] === 'Article' || obj['@type'] === 'BlogPosting')) {
+                  if (obj.description) {
+                      finalDescription = cleanText(obj.description);
+                  } else if (obj.articleBody) {
+                      finalDescription = cleanText(obj.articleBody.substring(0, 300)) + '...';
+                  }
+                  if (finalDescription) break;
+              }
+          } catch (e) { /* ignore */ }
       }
-      const description = firstP || ogDesc || metaDesc || 'No description found';
+
+      // Strategy B: Text Scraper (Prioritize Body Text over Meta Description if possible)
+      if (!finalDescription) {
+          // Find the most likely content container
+          const candidates = Array.from(doc.querySelectorAll('article, [role="main"], .post-content, .entry-content, .article-body, #content, main'));
+          let contentContainer = candidates.length > 0 ? candidates[0] : doc.body;
+          
+          // If body is fallback, try to filter out header/footer
+          // Better: Look for paragraph with substantial text
+          const paragraphs = Array.from(contentContainer.querySelectorAll('p'));
+          
+          for (const p of paragraphs) {
+              const text = cleanText(p.innerText);
+              // Filter logic:
+              // - Must be reasonably long (>40 chars)
+              // - Shouldn't look like a menu item (no high density of links, simplistic check here)
+              // - Shouldn't be copyright footer
+              if (text.length > 50 && !text.toLowerCase().includes('copyright') && !text.toLowerCase().includes('all rights reserved')) {
+                  finalDescription = text;
+                  break;
+              }
+          }
+      }
+
+      // Strategy C: Meta Description Fallback
+      if (!finalDescription) {
+          const ogDesc = doc.querySelector('meta[property="og:description"]')?.getAttribute('content');
+          const twitterDesc = doc.querySelector('meta[name="twitter:description"]')?.getAttribute('content');
+          const metaDesc = doc.querySelector('meta[name="description"]')?.getAttribute('content');
+          finalDescription = cleanText(ogDesc || twitterDesc || metaDesc || '');
+      }
+
+      if (!finalDescription) finalDescription = "No description found";
 
       // 3. Image (Enhanced Logic)
       let imgUrl = '';
@@ -114,7 +149,6 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
       } else {
           // Priority B: Find largest image in article body
           const images = Array.from(doc.querySelectorAll('img'));
-          let bestImg: HTMLImageElement | null = null;
           let maxScore = 0;
 
           for (const img of images) {
@@ -152,8 +186,8 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
       return {
         id: Date.now().toString() + Math.random().toString().slice(2, 5),
         url: pageUrl,
-        title: title.trim(),
-        firstParagraph: description.trim(),
+        title: title,
+        firstParagraph: finalDescription,
         imageUrl: imgUrl
       };
   };
@@ -272,7 +306,7 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
                   const article = extractArticleData(html, link);
                   
                   // Only add if it looks like an article (has a title and some text)
-                  if (article.title && article.title !== 'No Title Found' && article.firstParagraph) {
+                  if (article.title && article.title !== 'No Title Found' && article.firstParagraph !== 'No description found') {
                       setArticles(prev => [article, ...prev]);
                   }
               } catch (e) {
