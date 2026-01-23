@@ -1,5 +1,6 @@
+
 import React, { useState, useRef } from 'react';
-import { ArrowLeft, Search, Download, Trash2, ExternalLink, FileSpreadsheet, Plus, Globe, Loader2, StopCircle, Layers } from 'lucide-react';
+import { ArrowLeft, Search, Download, Trash2, ExternalLink, FileSpreadsheet, Plus, Globe, Loader2, StopCircle, Layers, Image as ImageIcon } from 'lucide-react';
 import { ScrapedArticle } from '../types';
 import * as XLSX from 'xlsx';
 
@@ -58,6 +59,17 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
     throw new Error('Could not fetch website content. The site may strictly block proxies (403) or is unreachable.');
   };
 
+  const resolveUrl = (baseUrl: string, relativeUrl: string): string => {
+      if (!relativeUrl) return '';
+      if (relativeUrl.startsWith('data:')) return relativeUrl; // Keep base64
+      
+      try {
+          return new URL(relativeUrl, baseUrl).href;
+      } catch (e) {
+          return relativeUrl;
+      }
+  };
+
   const extractArticleData = (htmlContent: string, pageUrl: string): ScrapedArticle => {
       const parser = new DOMParser();
       const doc = parser.parseFromString(htmlContent, 'text/html');
@@ -65,51 +77,76 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
       // Extraction Logic
       // 1. Title
       const ogTitle = doc.querySelector('meta[property="og:title"]')?.getAttribute('content');
+      const twitterTitle = doc.querySelector('meta[name="twitter:title"]')?.getAttribute('content');
       const h1 = doc.querySelector('h1')?.innerText;
-      const title = ogTitle || h1 || doc.title || 'No Title Found';
+      const title = ogTitle || twitterTitle || h1 || doc.title || 'No Title Found';
 
       // 2. First Paragraph
       const ogDesc = doc.querySelector('meta[property="og:description"]')?.getAttribute('content');
+      const metaDesc = doc.querySelector('meta[name="description"]')?.getAttribute('content');
       let firstP = '';
-      const paragraphs = doc.querySelectorAll('p');
+      
+      // Try to find the main article body first to avoid footer/sidebar text
+      const articleBody = doc.querySelector('article') || doc.querySelector('main') || doc.body;
+      const paragraphs = articleBody.querySelectorAll('p');
+      
       for (const p of paragraphs) {
         const text = p.innerText.trim();
-        // Filter out short menu/copyright text
-        if (text.length > 50) {
+        // Filter out short menu/copyright text, must be substantial
+        if (text.length > 60) {
             firstP = text;
             break;
         }
       }
-      const description = firstP || ogDesc || 'No description found';
+      const description = firstP || ogDesc || metaDesc || 'No description found';
 
-      // 3. Image
-      const ogImage = doc.querySelector('meta[property="og:image"]')?.getAttribute('content');
-      let imgUrl = ogImage || '';
-      
-      if (!imgUrl) {
-          const imgs = doc.querySelectorAll('img');
-          for(const img of imgs) {
-              if (img.src && !img.src.startsWith('data:') && img.width > 100) {
-                  imgUrl = img.src;
-                  break;
+      // 3. Image (Enhanced Logic)
+      let imgUrl = '';
+
+      // Priority A: Meta Tags (Best Quality)
+      const metaImage = 
+          doc.querySelector('meta[property="og:image"]')?.getAttribute('content') ||
+          doc.querySelector('meta[name="twitter:image"]')?.getAttribute('content') ||
+          doc.querySelector('link[rel="image_src"]')?.getAttribute('href');
+
+      if (metaImage) {
+          imgUrl = metaImage;
+      } else {
+          // Priority B: Find largest image in article body
+          const images = Array.from(doc.querySelectorAll('img'));
+          let bestImg: HTMLImageElement | null = null;
+          let maxScore = 0;
+
+          for (const img of images) {
+              // Get the real source (handle lazy loading)
+              const src = img.getAttribute('src') || 
+                          img.getAttribute('data-src') || 
+                          img.getAttribute('data-original') ||
+                          img.getAttribute('data-url');
+              
+              if (!src || src.startsWith('data:')) continue;
+              
+              // Skip SVG icons or small UI elements
+              if (src.endsWith('.svg') || src.includes('icon') || src.includes('logo')) continue;
+
+              // Check dimensions if available
+              const width = parseFloat(img.getAttribute('width') || '0');
+              const height = parseFloat(img.getAttribute('height') || '0');
+              
+              // Simple scoring: width * height, or rudimentary check if no dimensions
+              let score = width * height;
+              if (width === 0) score = 100; // Give benefit of doubt if no size attr
+
+              if (score > maxScore) {
+                  maxScore = score;
+                  imgUrl = src;
               }
           }
       }
 
-      // Resolve relative image URLs
-      if (imgUrl && !/^https?:\/\//i.test(imgUrl)) {
-        try {
-            // Need a base for relative URLs
-            const urlObj = new URL(pageUrl);
-            // Handle absolute path /img.jpg vs relative path img.jpg
-            if (imgUrl.startsWith('/')) {
-                imgUrl = `${urlObj.origin}${imgUrl}`;
-            } else {
-                imgUrl = new URL(imgUrl, pageUrl).href;
-            }
-        } catch (e) {
-            console.warn("Could not resolve relative image URL", e);
-        }
+      // Final cleanup: Resolve relative URLs
+      if (imgUrl) {
+          imgUrl = resolveUrl(pageUrl, imgUrl);
       }
 
       return {
@@ -151,8 +188,6 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
 
         } catch (err: any) {
             console.error(`Failed to scrape ${url}`, err);
-            // We don't stop the whole batch, just log error in console or maybe add a "failed" notification
-            // Optionally set error state but that might overwrite previous success messages
         }
         
         processedCount++;
@@ -200,13 +235,13 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
                   if (href.startsWith('#') || href.startsWith('javascript:')) return;
 
                   // Resolve absolute URL
-                  const fullUrl = new URL(href, baseUrl).href;
+                  const fullUrl = resolveUrl(baseUrl, href);
                   
                   // Rule: Must be same domain, not the homepage itself, and not a file
                   if (fullUrl.startsWith(origin) && 
                       fullUrl !== baseUrl && 
                       fullUrl !== baseUrl + '/' &&
-                      !fullUrl.match(/\.(pdf|zip|png|jpg)$/i)) {
+                      !fullUrl.match(/\.(pdf|zip|png|jpg|jpeg|gif)$/i)) {
                       foundUrls.add(fullUrl);
                   }
               } catch (e) {
@@ -224,10 +259,13 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
 
           // 3. Process Links Sequentially
           let processedCount = 0;
-          for (const link of linksToScrape) {
+          const maxLimit = 10; // Limit auto-scan to 10 to avoid huge waits
+          const limitedLinks = linksToScrape.slice(0, maxLimit);
+
+          for (const link of limitedLinks) {
               if (abortScanRef.current) break;
 
-              setScanProgress(`Scraping ${processedCount + 1}/${linksToScrape.length}: ${link.slice(0, 40)}...`);
+              setScanProgress(`Scraping ${processedCount + 1}/${limitedLinks.length}: ${link.slice(0, 40)}...`);
               
               try {
                   const html = await fetchHtmlContent(link);
@@ -242,8 +280,7 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
               }
 
               processedCount++;
-              // Small delay to be nice to the proxy/server
-              await new Promise(r => setTimeout(r, 500));
+              await new Promise(r => setTimeout(r, 800));
           }
 
       } catch (err: any) {
@@ -265,20 +302,15 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
     // Create array of arrays for exact column mapping
     const headers = ["Judul", "Paragraf Pertama", "URL Gambar"];
     
-    // We reverse the articles array so the exported list follows the order 
-    // from 'First Scraped' (Oldest in state) to 'Last Scraped' (Newest in state).
-    // State is [Newest, ..., Oldest]. Reverse -> [Oldest, ..., Newest].
     const rows = [...articles].reverse().map(item => [
         item.title,
         item.firstParagraph,
         item.imageUrl
     ]);
     
-    // Combine headers and rows
     const data = [headers, ...rows];
 
     const ws = XLSX.utils.aoa_to_sheet(data);
-    // Set column widths for better visibility
     ws['!cols'] = [{ wch: 50 }, { wch: 100 }, { wch: 50 }];
 
     const wb = XLSX.utils.book_new();
@@ -289,6 +321,13 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
 
   const removeArticle = (id: string) => {
     setArticles(prev => prev.filter(a => a.id !== id));
+  };
+
+  // Helper to ensure image loads via proxy if needed
+  const getDisplayImage = (url: string) => {
+      if (!url) return null;
+      // Use wsrv.nl as a reliable image proxy to bypass CORS/Hotlink protection
+      return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=200&h=200&fit=cover`;
   };
 
   return (
@@ -391,14 +430,31 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-4">
-                    {articles.map((item) => (
+                    {articles.map((item) => {
+                        const displayImg = getDisplayImage(item.imageUrl);
+                        return (
                         <div key={item.id} className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex gap-4 group hover:border-slate-700 transition-colors animate-slide-up">
-                            {/* Image Thumbnail */}
-                            <div className="w-24 h-24 flex-shrink-0 bg-black rounded-lg overflow-hidden border border-slate-800">
-                                {item.imageUrl ? (
-                                    <img src={item.imageUrl} alt="" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display='none')}/>
+                            {/* Image Thumbnail with Proxy */}
+                            <div className="w-24 h-24 flex-shrink-0 bg-black rounded-lg overflow-hidden border border-slate-800 relative">
+                                {displayImg ? (
+                                    <img 
+                                        src={displayImg} 
+                                        alt="" 
+                                        className="w-full h-full object-cover" 
+                                        onError={(e) => {
+                                            // Fallback if proxy fails, show original (might fail CORS) or placeholder
+                                            if (item.imageUrl && e.currentTarget.src !== item.imageUrl) {
+                                                e.currentTarget.src = item.imageUrl;
+                                            } else {
+                                                e.currentTarget.style.display = 'none';
+                                            }
+                                        }}
+                                    />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-slate-700 text-xs">No Img</div>
+                                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-700 text-xs gap-1">
+                                        <ImageIcon className="w-6 h-6 opacity-50" />
+                                        No Img
+                                    </div>
                                 )}
                             </div>
                             
@@ -420,7 +476,7 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
                                 <Trash2 className="w-5 h-5" />
                             </button>
                         </div>
-                    ))}
+                    )})}
                 </div>
             )}
         </div>
