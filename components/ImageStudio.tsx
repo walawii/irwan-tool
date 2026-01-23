@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Upload, Type, ImageIcon, Download, Loader2, Sparkles, Trash2, Smartphone, Maximize, Palette, Move, RefreshCw, Layers, Plus, FileSpreadsheet, List, CheckCircle, Type as FontIcon, MinusCircle, PlusCircle, MoveHorizontal, MoveVertical, ZoomIn, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Upload, Type, ImageIcon, Download, Loader2, Sparkles, Trash2, Smartphone, Maximize, Palette, Move, RefreshCw, Layers, Plus, FileSpreadsheet, List, CheckCircle, Type as FontIcon, MinusCircle, PlusCircle, MoveHorizontal, MoveVertical, ZoomIn } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { ImageItem } from '../types';
 import * as XLSX from 'xlsx';
@@ -25,7 +25,7 @@ const DEFAULT_ITEM: Omit<ImageItem, 'id'> = {
     yPosition: 80,
     fontFamily: '"Bebas Neue", sans-serif',
     textColor: '#ffffff',
-    textBgColor: 'rgba(0,0,0,0.85)',
+    textBgColor: 'rgba(0,0,0,0.9)',
     useBgBox: true,
     status: 'idle',
     imageZoom: 1,
@@ -60,7 +60,6 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [aspectRatio, setAspectRatio] = useState<'1:1' | '9:16' | '16:9'>('9:16');
     const [prompt, setPrompt] = useState('');
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -204,7 +203,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
             const maxWidth = width * 0.9;
             let currentY = (height * item.yPosition) / 100;
 
-            // Auto-fitting Logic: Calculate total expected height
+            // Manual sizing (No auto-shrink)
             let hSize = item.headlineSize;
             let sSize = item.subheadlineSize;
             
@@ -214,29 +213,13 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
             ctx.font = `600 ${sSize}px ${item.fontFamily}`;
             let sLines = wrapText(ctx, item.subheadline, maxWidth);
 
-            const totalHeight = (hLines.length * hSize * 1.1) + (sLines.length * sSize * 1.3) + 40;
-            const availableHeight = height - currentY - 40;
-
-            // Shrink fonts if they don't fit
-            if (totalHeight > availableHeight && availableHeight > 100) {
-                const ratio = availableHeight / totalHeight;
-                hSize = Math.max(20, Math.floor(hSize * ratio));
-                sSize = Math.max(12, Math.floor(sSize * ratio));
-                
-                // Recalculate wrapping with new sizes
-                ctx.font = `900 ${hSize}px ${item.fontFamily}`;
-                hLines = wrapText(ctx, item.headline.toUpperCase(), maxWidth);
-                ctx.font = `600 ${sSize}px ${item.fontFamily}`;
-                sLines = wrapText(ctx, item.subheadline, maxWidth);
-            }
-
             // Draw Headline
             if (item.headline) {
                 ctx.font = `900 ${hSize}px ${item.fontFamily}`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                const lineHeight = hSize * 1.1;
-                const padding = hSize * 0.3;
+                const lineHeight = hSize * 1.15;
+                const padding = hSize * 0.4;
 
                 hLines.forEach((line, i) => {
                     const lineY = currentY + i * lineHeight;
@@ -244,7 +227,10 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
 
                     if (item.useBgBox) {
                         ctx.fillStyle = item.textBgColor;
+                        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                        ctx.shadowBlur = 10;
                         ctx.fillRect(centerX - lWidth / 2 - padding, lineY - hSize/2 - padding/4, lWidth + padding * 2, hSize + padding/2);
+                        ctx.shadowBlur = 0; // Reset shadow for text
                     }
 
                     ctx.fillStyle = item.textColor;
@@ -259,8 +245,8 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
                 ctx.font = `600 ${sSize}px ${item.fontFamily}`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                const lineHeight = sSize * 1.3;
-                const padding = sSize * 0.4;
+                const lineHeight = sSize * 1.35;
+                const padding = sSize * 0.5;
 
                 sLines.forEach((line, i) => {
                     const lineY = currentY + i * lineHeight;
@@ -268,7 +254,10 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
 
                     if (item.useBgBox) {
                         ctx.fillStyle = item.textBgColor;
+                        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+                        ctx.shadowBlur = 8;
                         ctx.fillRect(centerX - lWidth / 2 - padding, lineY - sSize/2 - padding/4, lWidth + padding * 2, sSize + padding/2);
+                        ctx.shadowBlur = 0;
                     }
 
                     ctx.fillStyle = item.textColor;
@@ -320,25 +309,17 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen w-full lg:overflow-hidden bg-slate-950 text-white font-inter">
-            {/* Sidebar Toggle (Mobile) */}
-            <button 
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="lg:hidden fixed bottom-6 right-6 z-50 bg-indigo-600 p-4 rounded-full shadow-2xl text-white active:scale-90 transition-transform"
-            >
-                {isSidebarOpen ? <ChevronDown /> : <ChevronUp />}
-            </button>
-
+        <div className="flex h-screen w-full bg-slate-950 text-white font-inter overflow-hidden">
             {/* Sidebar */}
-            <div className={`w-full lg:w-96 bg-slate-900 border-r border-slate-800 flex flex-col transition-all duration-300 z-20 shadow-2xl overflow-hidden ${isSidebarOpen ? 'h-auto max-h-[60vh] lg:h-full lg:max-h-full' : 'h-0 lg:h-full'}`}>
-                <div className="p-4 lg:p-6 border-b border-slate-800 flex items-center gap-3 shrink-0">
+            <div className="w-96 flex-shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col shadow-2xl z-20">
+                <div className="p-6 border-b border-slate-800 flex items-center gap-3 shrink-0">
                     <button onClick={onBack} className="p-2 -ml-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
                         <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <h1 className="text-lg lg:text-xl font-bold bg-gradient-to-r from-indigo-400 to-blue-500 bg-clip-text text-transparent">Graphic Studio</h1>
+                    <h1 className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-blue-500 bg-clip-text text-transparent">Graphic Studio</h1>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6 lg:space-y-8 scrollbar-thin">
+                <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-thin">
                     {/* Storyboard / Queue */}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
@@ -530,7 +511,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
                     </div>
                 </div>
 
-                <div className="p-4 lg:p-6 border-t border-slate-800 bg-slate-900/80 backdrop-blur-md">
+                <div className="p-6 border-t border-slate-800 bg-slate-900/80 backdrop-blur-md">
                     <button 
                         onClick={downloadAll}
                         disabled={items.some(i => !i.baseImage)}
@@ -542,16 +523,16 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
             </div>
 
             {/* Preview Viewport */}
-            <div className="flex-1 flex flex-col items-center justify-center p-4 lg:p-8 relative overflow-hidden min-h-[500px] lg:min-h-0 lg:overflow-y-auto pb-20 lg:pb-0">
+            <div className="flex-1 flex flex-col items-center justify-center bg-[#020202] relative overflow-hidden">
                 <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#475569 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
                 
-                <div className="relative z-10 flex flex-col items-center gap-4 lg:gap-6 w-full">
+                <div className="relative z-10 flex flex-col items-center gap-6 w-full">
                     <div className="flex items-center gap-3 text-slate-500 text-[10px] font-bold uppercase tracking-widest bg-slate-900/50 px-5 py-2 rounded-full border border-slate-800">
                         <Smartphone className="w-3 h-3" /> {aspectRatio} Preview Slot #{items.indexOf(activeItem) + 1}
                     </div>
 
                     <div 
-                        className={`relative bg-slate-900 rounded-[30px] overflow-hidden shadow-2xl border-4 lg:border-8 border-slate-800 ring-1 ring-slate-700 transition-all duration-500 w-full max-w-[280px] lg:max-w-[400px] aspect-[${aspectRatio.split(':').join('/')}]`}
+                        className={`relative bg-slate-900 rounded-[30px] overflow-hidden shadow-2xl border-4 lg:border-8 border-slate-800 ring-1 ring-slate-700 transition-all duration-500 w-[280px] lg:w-[400px] aspect-[${aspectRatio.split(':').join('/')}]`}
                         style={{ 
                             aspectRatio: aspectRatio === '9:16' ? '9/16' : aspectRatio === '16:9' ? '16/9' : '1/1'
                         }}
