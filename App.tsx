@@ -9,6 +9,7 @@ import VideoOverlayMaker from './components/VideoOverlayMaker';
 import ImageStudio from './components/ImageStudio';
 import FacebookScheduler from './components/FacebookScheduler';
 import VideoSplitter from './components/VideoSplitter';
+import PromptCreator from './components/PromptCreator';
 import { ViewState } from './types';
 
 const App: React.FC = () => {
@@ -50,6 +51,10 @@ const App: React.FC = () => {
 
       {currentView === 'video-splitter' && (
         <VideoSplitter onBack={() => setCurrentView('home')} />
+      )}
+
+      {currentView === 'prompt-creator' && (
+        <PromptCreator onBack={() => setCurrentView('home')} />
       )}
     </>
   );

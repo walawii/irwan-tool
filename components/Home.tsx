@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Clapperboard, FileSpreadsheet, ArrowRight, Youtube, LayoutTemplate, Layers, ImageIcon, Facebook, Scissors } from 'lucide-react';
+import { Clapperboard, FileSpreadsheet, ArrowRight, Youtube, LayoutTemplate, Layers, ImageIcon, Facebook, Scissors, Sparkles } from 'lucide-react';
 import { ViewState } from '../types';
 
 interface HomeProps {
@@ -28,6 +28,23 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl mx-auto">
           
+          {/* Prompt Creator Card (NEW) */}
+          <button 
+            onClick={() => onNavigate('prompt-creator')}
+            className="group relative bg-slate-900/50 border border-slate-700 hover:border-amber-400 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(251,191,36,0.15)] flex flex-col min-h-[18rem] h-auto"
+          >
+            <div className="bg-amber-400/10 w-12 h-12 rounded-lg flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <Sparkles className="w-6 h-6 text-amber-400" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-amber-400 transition-colors">Prompt Creator</h3>
+            <p className="text-slate-400 text-xs mb-6 leading-relaxed">
+              Analyze video content and generate professional JSON prompts for Veo3, Flow, or Midjourney.
+            </p>
+            <div className="mt-auto flex items-center text-amber-400 text-xs font-semibold">
+              Generate Prompts <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </button>
+
           {/* Video Editor Card */}
           <button 
             onClick={() => onNavigate('editor')}
@@ -45,7 +62,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             </div>
           </button>
 
-          {/* Auto Splitter Card (NEW) */}
+          {/* Auto Splitter Card */}
           <button 
             onClick={() => onNavigate('video-splitter')}
             className="group relative bg-slate-900/50 border border-slate-700 hover:border-pink-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(236,72,153,0.15)] flex flex-col min-h-[18rem] h-auto"
