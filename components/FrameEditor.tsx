@@ -1,8 +1,7 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Video, LayoutTemplate, ShieldCheck, Download, Upload, Loader2, Play, Trash2, Maximize, Move, FileVideo, CheckCircle, AlertCircle, List, Plus, Music, Pause, Volume2, VolumeX, Scissors, Type, Sparkles, ChevronUp, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Video, LayoutTemplate, ShieldCheck, Download, Upload, Loader2, Play, Trash2, Maximize, Move, FileVideo, CheckCircle, AlertCircle, List, Plus, Music, Pause, Volume2, VolumeX, Scissors, Type as IconType, Sparkles, ChevronUp, ChevronDown } from 'lucide-react';
 import { FrameSettings, WatermarkPosition, FrameVideoItem, Caption } from '../types';
-import { GoogleGenAI, Type as SchemaType } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 interface FrameEditorProps {
     onBack: () => void;
@@ -231,26 +230,25 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                 reader.readAsDataURL(file);
             });
 
+            // Fix: Use 'Type' directly instead of 'SchemaType' and use 'contents: { parts: [...] }' structure
             const response = await ai.models.generateContent({
                 model: 'gemini-3-flash-preview',
-                contents: [
-                    {
-                        parts: [
-                            { inlineData: { data: base64Data, mimeType: file.type } },
-                            { text: "Tolong transkrip video ini menjadi subtitle dalam format JSON. Hasilnya harus berupa array objek dengan properti 'text', 'start' (detik), dan 'end' (detik). Gunakan Bahasa Indonesia." }
-                        ]
-                    }
-                ],
+                contents: {
+                    parts: [
+                        { inlineData: { data: base64Data, mimeType: file.type } },
+                        { text: "Tolong transkrip video ini menjadi subtitle dalam format JSON. Hasilnya harus berupa array objek dengan properti 'text', 'start' (detik), dan 'end' (detik). Gunakan Bahasa Indonesia." }
+                    ]
+                },
                 config: {
                     responseMimeType: 'application/json',
                     responseSchema: {
-                        type: SchemaType.ARRAY,
+                        type: Type.ARRAY,
                         items: {
-                            type: SchemaType.OBJECT,
+                            type: Type.OBJECT,
                             properties: {
-                                text: { type: SchemaType.STRING },
-                                start: { type: SchemaType.NUMBER },
-                                end: { type: SchemaType.NUMBER }
+                                text: { type: Type.STRING },
+                                start: { type: Type.NUMBER },
+                                end: { type: Type.NUMBER }
                             },
                             required: ['text', 'start', 'end']
                         }
@@ -354,8 +352,7 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
                     const vRatio = video.videoWidth / video.videoHeight;
-                    const cRatio = canvas.width / canvas.height;
-                    let dw, dh, sx, sy;
+                    const cRatio = canvas.width / canvas.height;let dw, dh, sx, sy;
                     if (vRatio > cRatio) {
                         dh = canvas.height; dw = dh * vRatio; sx = (canvas.width - dw) / 2; sy = 0;
                     } else {
@@ -568,7 +565,7 @@ const FrameEditor: React.FC<FrameEditorProps> = ({ onBack }) => {
 
                             <div className="space-y-4">
                                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                    <Type className="w-3 h-3" /> Auto Captions
+                                    <IconType className="w-3 h-3" /> Auto Captions
                                 </label>
                                 <button 
                                     onClick={generateCaptions}

@@ -10,6 +10,7 @@ import ImageStudio from './components/ImageStudio';
 import FacebookScheduler from './components/FacebookScheduler';
 import VideoSplitter from './components/VideoSplitter';
 import PromptCreator from './components/PromptCreator';
+import StoryBoardStudio from './components/StoryBoardStudio';
 import { ViewState } from './types';
 
 const App: React.FC = () => {
@@ -55,6 +56,10 @@ const App: React.FC = () => {
 
       {currentView === 'prompt-creator' && (
         <PromptCreator onBack={() => setCurrentView('home')} />
+      )}
+
+      {currentView === 'story-board' && (
+        <StoryBoardStudio onBack={() => setCurrentView('home')} />
       )}
     </>
   );
