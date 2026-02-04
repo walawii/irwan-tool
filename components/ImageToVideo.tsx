@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Film, Loader2, Download, AlertTriangle, MonitorPlay, Smartphone, Zap, Info, LogIn, Upload, ImageIcon, User } from 'lucide-react';
+import { ArrowLeft, Film, Loader2, Download, AlertTriangle, MonitorPlay, Smartphone, Zap, Info, LogIn, Upload, ImageIcon, User, KeyRound } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 
 interface ImageToVideoProps {
@@ -8,7 +8,8 @@ interface ImageToVideoProps {
 }
 
 const ImageToVideo: React.FC<ImageToVideoProps> = ({ onBack }) => {
-    const [hasKey, setHasKey] = useState<boolean | null>(null);
+    const [apiKey, setApiKey] = useState('');
+    const [isKeySaved, setIsKeySaved] = useState(false);
     const [sourceImage, setSourceImage] = useState<{ file: File, url: string } | null>(null);
     const [prompt, setPrompt] = useState('');
     const [aspectRatio, setAspectRatio] = useState<'9:16' | '16:9'>('9:16');
@@ -18,35 +19,6 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ onBack }) => {
     const [error, setError] = useState<string | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
-
-    useEffect(() => {
-        checkKeyStatus();
-    }, []);
-
-    const checkKeyStatus = async () => {
-        const selected = await window.aistudio.hasSelectedApiKey();
-        setHasKey(selected);
-    };
-
-    const handleSelectKey = async () => {
-        try {
-            await window.aistudio.openSelectKey();
-            // Assume success to avoid race conditions and proceed to the app
-            setHasKey(true);
-            setError(null);
-        } catch (e) {
-            setError("Gagal memilih API Key.");
-        }
-    };
-
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const url = URL.createObjectURL(file);
-            setSourceImage({ file, url });
-            setGeneratedVideoUrl(null); // Reset video on new image
-        }
-    };
 
     const fileToBase64 = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
@@ -58,10 +30,10 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ onBack }) => {
     };
 
     const handleGenerate = async () => {
-        if (!sourceImage || !prompt.trim()) return;
-
-        if (!(await window.aistudio.hasSelectedApiKey())) {
-            await handleSelectKey();
+        if (!sourceImage || !prompt.trim() || !apiKey) {
+            setError("API Key is required to generate video.");
+            setIsKeySaved(false);
+            return;
         }
 
         setIsGenerating(true);
@@ -70,7 +42,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ onBack }) => {
         setStatusMessage('Initializing Veo model...');
 
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const ai = new GoogleGenAI({ apiKey: apiKey });
             const base64Data = await fileToBase64(sourceImage.file);
             
             const imagePart = {
@@ -99,7 +71,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ onBack }) => {
             setStatusMessage('Finalizing and downloading video...');
             const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
             if (downloadLink) {
-                const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+                const response = await fetch(`${downloadLink}&key=${apiKey}`);
                 const blob = await response.blob();
                 setGeneratedVideoUrl(URL.createObjectURL(blob));
                 setStatusMessage('Video generated successfully!');
@@ -108,11 +80,15 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ onBack }) => {
             }
         } catch (err: any) {
             console.error(err);
-            if (err.message?.includes("Requested entity was not found")) {
-                setError("Project/Key tidak ditemukan. Silakan pilih API key dari project Google Cloud dengan billing aktif.");
-                setHasKey(false);
+            const msg = err.message || "An unknown error occurred.";
+            if (msg.includes("API key not valid") || msg.includes("API_KEY_INVALID") || msg.includes("PERMISSION_DENIED")) {
+                setError("API key not valid. Please check your key and try again.");
+                setIsKeySaved(false);
+            } else if (msg.includes("Requested entity was not found")) {
+                setError("Project/Key not found. Ensure the key is from a Google Cloud project with billing enabled.");
+                setIsKeySaved(false);
             } else {
-                setError(err.message || "An unknown error occurred.");
+                setError(msg);
             }
         } finally {
             setIsGenerating(false);
@@ -121,24 +97,33 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ onBack }) => {
     };
 
     // Authentication Screen
-    if (hasKey === false) {
+    if (!isKeySaved) {
         return (
             <div className="h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
                 <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-md w-full shadow-2xl animate-in fade-in zoom-in-95 duration-500">
                     <div className="w-20 h-20 bg-teal-600/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <Zap className="w-10 h-10 text-teal-400" />
+                        <KeyRound className="w-10 h-10 text-teal-400" />
                     </div>
-                    <h2 className="text-2xl font-black mb-2 uppercase tracking-tighter">Authentication Required</h2>
+                    <h2 className="text-2xl font-black mb-2 uppercase tracking-tighter">Enter Google AI API Key</h2>
                     <p className="text-slate-400 text-sm mb-8">
-                        This feature uses Google's Veo model, which requires a paid API key. Please select a key from a Google Cloud project with active billing.
+                        This feature uses Google's Veo model, which requires a paid API key. Please enter your key from a Google Cloud project with active billing.
                     </p>
                     
+                    <input
+                        type="password"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        placeholder="Enter your Google AI API Key"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white mb-4 text-center focus:ring-2 focus:ring-teal-500 outline-none"
+                    />
+
                     <button 
-                        onClick={handleSelectKey}
-                        className="w-full py-4 bg-white text-slate-950 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-slate-200 transition-all active:scale-95 mb-4"
+                        onClick={() => setIsKeySaved(true)}
+                        disabled={!apiKey.trim()}
+                        className="w-full py-4 bg-white text-slate-950 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-slate-200 transition-all active:scale-95 mb-4 disabled:bg-slate-600 disabled:text-slate-400 disabled:cursor-not-allowed"
                     >
                         <LogIn className="w-5 h-5" />
-                        Select Google Cloud API Key
+                        Save & Continue
                     </button>
 
                     {error && <p className="text-red-400 text-xs mt-4">{error}</p>}
@@ -167,8 +152,8 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ onBack }) => {
                         <Film className="w-4 h-4" /> Image to Video (Veo)
                     </h1>
                 </div>
-                <button onClick={handleSelectKey} className="p-2 text-slate-500 hover:text-teal-400 transition-colors" title="Change Google Cloud Account">
-                    <User className="w-4 h-4" />
+                <button onClick={() => setIsKeySaved(false)} className="p-2 text-slate-500 hover:text-teal-400 transition-colors" title="Change API Key">
+                    <KeyRound className="w-4 h-4" />
                 </button>
             </div>
 
@@ -178,7 +163,13 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ onBack }) => {
                     <div className="space-y-3">
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">1. Upload Image</label>
                         <div onClick={() => fileInputRef.current?.click()} className={`aspect-square w-full bg-slate-900 rounded-2xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-all relative overflow-hidden group ${sourceImage ? 'border-teal-500/50' : 'border-slate-700 hover:border-teal-500/50'}`}>
-                            <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleImageUpload} />
+                            <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                    setSourceImage({ file, url: URL.createObjectURL(file) });
+                                    setGeneratedVideoUrl(null);
+                                }
+                            }} />
                             {sourceImage ? (
                                 <img src={sourceImage.url} alt="Source Preview" className="w-full h-full object-cover" />
                             ) : (
