@@ -1,5 +1,6 @@
+
 import React, { useState, useRef } from 'react';
-import { ArrowLeft, Film, Loader2, Download, AlertTriangle, MonitorPlay, Smartphone, Wind, ExternalLink, Zap, Timer, Layout, Copy, CheckCircle, Sparkles, Plus, Image as ImageIcon, Trash2, Upload, X } from 'lucide-react';
+import { ArrowLeft, Film, Loader2, Download, AlertTriangle, MonitorPlay, Smartphone, Wind, ExternalLink, Zap, Timer, Layout, Copy, CheckCircle, Sparkles, Plus, Image as ImageIcon, Trash2, Upload, X, KeyRound, LogIn, Info } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 
 interface Scene {
@@ -10,6 +11,8 @@ interface Scene {
     aiPrompt: string;
     imageUrl: string | null;
     isGeneratingImage: boolean;
+    videoUrl: string | null;
+    isGeneratingVideo: boolean;
 }
 
 interface StoryBoardStudioProps {
@@ -17,6 +20,8 @@ interface StoryBoardStudioProps {
 }
 
 const StoryBoardStudio: React.FC<StoryBoardStudioProps> = ({ onBack }) => {
+    const [apiKey, setApiKey] = useState('');
+    const [isKeySaved, setIsKeySaved] = useState(false);
     const [viewMode, setViewMode] = useState<'local' | 'workspace'>('local');
     const [storyIdea, setStoryIdea] = useState('');
     const [characterDetails, setCharacterDetails] = useState('');
@@ -35,7 +40,6 @@ const StoryBoardStudio: React.FC<StoryBoardStudioProps> = ({ onBack }) => {
         if (!files) return;
 
         const newImages = [...characterImages];
-        // Fixed: Explicitly typed 'file' as 'File' to resolve 'unknown' type error in URL.createObjectURL
         Array.from(files).forEach((file: File) => {
             if (newImages.length < 2) {
                 const url = URL.createObjectURL(file);
@@ -117,7 +121,9 @@ const StoryBoardStudio: React.FC<StoryBoardStudioProps> = ({ onBack }) => {
                 description: s.description,
                 aiPrompt: s.aiPrompt,
                 imageUrl: null,
-                isGeneratingImage: false
+                isGeneratingImage: false,
+                videoUrl: null,
+                isGeneratingVideo: false,
             }));
 
             setScenes(parsedScenes);
@@ -160,7 +166,7 @@ const StoryBoardStudio: React.FC<StoryBoardStudioProps> = ({ onBack }) => {
             for (const part of response.candidates[0].content.parts) {
                 if (part.inlineData) {
                     const url = `data:image/png;base64,${part.inlineData.data}`;
-                    setScenes(prev => prev.map(s => s.id === sceneId ? { ...s, imageUrl: url, isGeneratingImage: false } : s));
+                    setScenes(prev => prev.map(s => s.id === sceneId ? { ...s, imageUrl: url, isGeneratingImage: false, videoUrl: null } : s));
                     break;
                 }
             }
@@ -170,11 +176,109 @@ const StoryBoardStudio: React.FC<StoryBoardStudioProps> = ({ onBack }) => {
         }
     };
 
+    const handleGenerateSceneVideo = async (sceneId: string) => {
+        if (!apiKey) {
+            setError("Please enter your Google AI API Key to generate videos.");
+            setIsKeySaved(false);
+            return;
+        }
+
+        const scene = scenes.find(s => s.id === sceneId);
+        if (!scene || !scene.imageUrl) return;
+
+        setScenes(prev => prev.map(s => s.id === sceneId ? { ...s, isGeneratingVideo: true } : s));
+        setError(null);
+
+        try {
+            const ai = new GoogleGenAI({ apiKey });
+            const base64Data = await getBase64(scene.imageUrl);
+
+            const animationPrompt = `Animate this image. A cinematic, slow, subtle camera push-in effect, bringing the scene to life. Focus on atmosphere.`;
+
+            let operation = await ai.models.generateVideos({
+                model: 'veo-3.1-fast-generate-preview',
+                prompt: `${scene.description}. ${animationPrompt}`,
+                image: {
+                    imageBytes: base64Data,
+                    mimeType: 'image/png'
+                },
+                config: {
+                    numberOfVideos: 1,
+                    resolution: '720p',
+                    aspectRatio: '9:16'
+                }
+            });
+
+            while (!operation.done) {
+                await new Promise(resolve => setTimeout(resolve, 8000));
+                operation = await ai.operations.getVideosOperation({ operation });
+            }
+            
+            const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+            if (downloadLink) {
+                const response = await fetch(`${downloadLink}&key=${apiKey}`);
+                const blob = await response.blob();
+                const videoObjectURL = URL.createObjectURL(blob);
+                setScenes(prev => prev.map(s => s.id === sceneId ? { ...s, videoUrl: videoObjectURL, isGeneratingVideo: false } : s));
+            } else {
+                throw new Error("Video generation completed, but no download link was provided.");
+            }
+
+        } catch (err: any) {
+            console.error(err);
+            const msg = err.message || "An unknown error occurred.";
+            if (msg.includes("API key not valid") || msg.includes("API_KEY_INVALID") || msg.includes("PERMISSION_DENIED")) {
+                setError("API key not valid. Please check your key and try again.");
+                setIsKeySaved(false);
+            } else {
+                 setScenes(prev => prev.map(s => s.id === sceneId ? { ...s, isGeneratingVideo: false } : s));
+                 setError(msg);
+            }
+        }
+    };
+
     const copyPrompt = (id: string, text: string) => {
         navigator.clipboard.writeText(text);
         setCopiedId(id);
         setTimeout(() => setCopiedId(null), 2000);
     };
+
+    if (!isKeySaved) {
+        return (
+            <div className="h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
+                <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-md w-full shadow-2xl animate-in fade-in zoom-in-95 duration-500">
+                    <div className="w-20 h-20 bg-cyan-600/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <KeyRound className="w-10 h-10 text-cyan-400" />
+                    </div>
+                    <h2 className="text-2xl font-black mb-2 uppercase tracking-tighter">Enter Google AI API Key</h2>
+                    <p className="text-slate-400 text-sm mb-8">
+                        Video generation requires a Google Veo model. Please enter your API key from a Google Cloud project with billing enabled to continue.
+                    </p>
+                    <input
+                        type="password"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        placeholder="Enter your Google AI API Key"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm text-white mb-4 text-center focus:ring-2 focus:ring-cyan-500 outline-none"
+                    />
+                    <button 
+                        onClick={() => { if(apiKey.trim()) { setIsKeySaved(true); setError(null); } }}
+                        disabled={!apiKey.trim()}
+                        className="w-full py-4 bg-white text-slate-950 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-slate-200 transition-all active:scale-95 mb-4 disabled:bg-slate-600"
+                    >
+                        <LogIn className="w-5 h-5" /> Save & Continue
+                    </button>
+                    {error && <p className="text-red-400 text-xs mt-4">{error}</p>}
+                    <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="text-[10px] text-slate-500 hover:text-cyan-400 flex items-center justify-center gap-1 transition-colors mt-4">
+                        <Info className="w-3 h-3" /> Learn about Gemini API Billing
+                    </a>
+                </div>
+                 <button onClick={onBack} className="mt-8 text-slate-600 hover:text-white text-xs font-bold uppercase tracking-widest transition-colors flex items-center gap-2">
+                    <ArrowLeft className="w-4 h-4" /> Back to Home
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="h-screen bg-slate-950 text-white font-inter flex flex-col overflow-hidden">
@@ -190,52 +294,55 @@ const StoryBoardStudio: React.FC<StoryBoardStudioProps> = ({ onBack }) => {
                         </h1>
                     </div>
                 </div>
-
-                {/* Workspace Switcher */}
-                <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
-                    <button 
-                        onClick={() => setViewMode('local')}
-                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'local' ? 'bg-cyan-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                        <Film className="w-3.5 h-3.5" /> STUDIO BUILDER
-                    </button>
-                    <button 
-                        onClick={() => setViewMode('workspace')}
-                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'workspace' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
-                    >
-                        <Layout className="w-3.5 h-3.5" /> CLOUD FLOW
+                <div className="flex items-center gap-4">
+                    <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+                        <button 
+                            onClick={() => setViewMode('local')}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'local' ? 'bg-cyan-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            <Film className="w-3.5 h-3.5" /> STUDIO BUILDER
+                        </button>
+                        <button 
+                            onClick={() => setViewMode('workspace')}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${viewMode === 'workspace' ? 'bg-amber-500 text-slate-950 shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                        >
+                            <Layout className="w-3.5 h-3.5" /> CLOUD FLOW
+                        </button>
+                    </div>
+                    <button onClick={() => setIsKeySaved(false)} className="p-2 text-slate-500 hover:text-cyan-400 transition-colors" title="Change API Key">
+                        <KeyRound className="w-4 h-4" />
                     </button>
                 </div>
-
-                <a href={FLOW_PROJECT_URL} target="_blank" rel="noopener noreferrer" className="p-2 text-slate-500 hover:text-white transition-colors" title="Buka di tab baru">
-                    <ExternalLink className="w-4 h-4" />
-                </a>
             </div>
 
             <div className="flex-1 relative overflow-hidden">
-                {/* Embedded Workspace Mode */}
                 {viewMode === 'workspace' && (
-                    <div className="absolute inset-0 bg-slate-950 flex flex-col">
-                        <div className="flex-1 relative bg-black">
-                            <div className="absolute inset-0 flex items-center justify-center -z-10 text-slate-700 p-10 text-center">
-                                <div className="max-w-md space-y-4">
-                                    <AlertTriangle className="w-12 h-12 mx-auto opacity-20" />
-                                    <p className="text-sm italic">Jika halaman Flow tidak muncul, silakan login ke Google di tab browser utama terlebih dahulu.</p>
-                                    <a href={FLOW_PROJECT_URL} target="_blank" className="inline-block px-6 py-2 bg-slate-800 rounded-full text-xs font-bold hover:bg-slate-700 transition-all uppercase tracking-widest">Buka di Tab Baru</a>
-                                </div>
+                    <div className="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
+                        <div className="bg-slate-900 border border-slate-800 p-10 rounded-3xl max-w-lg w-full shadow-2xl animate-in fade-in zoom-in-95 duration-500">
+                            <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-amber-500/20">
+                                <Layout className="w-10 h-10 text-amber-500" />
                             </div>
-                            <iframe 
-                                src={FLOW_PROJECT_URL} 
-                                className="w-full h-full border-none"
-                                title="Google Labs Flow"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                allowFullScreen
-                            />
+                            <h2 className="text-2xl font-black mb-2 uppercase tracking-tighter text-amber-400">Cloud Flow Workspace</h2>
+                            <p className="text-slate-400 text-sm mb-8 max-w-sm mx-auto">
+                                Buka project Anda di Google Flow untuk mengakses fitur editing dan kolaborasi canggih. Halaman akan terbuka di tab baru dan masuk secara otomatis dengan akun Google Anda yang aktif.
+                            </p>
+                            
+                            <a 
+                                href={FLOW_PROJECT_URL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full inline-flex items-center justify-center gap-2 py-4 bg-amber-500 text-slate-950 rounded-xl font-bold hover:bg-amber-400 transition-all active:scale-95 mb-4 shadow-lg shadow-amber-900/20"
+                            >
+                                Buka Google Flow di Tab Baru <ExternalLink className="w-4 h-4" />
+                            </a>
+                            
+                            <p className="text-[10px] text-slate-600">
+                                Proses masuk otomatis memerlukan Anda untuk login ke Google di browser Anda.
+                            </p>
                         </div>
                     </div>
                 )}
 
-                {/* Local Builder Mode */}
                 {viewMode === 'local' && (
                     <div className="h-full flex flex-col lg:flex-row">
                         {/* Input Panel */}
@@ -339,12 +446,13 @@ const StoryBoardStudio: React.FC<StoryBoardStudioProps> = ({ onBack }) => {
                                             key={scene.id}
                                             className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden flex flex-col transition-all hover:border-cyan-500/30 group animate-in fade-in slide-in-from-bottom-4 duration-500"
                                         >
-                                            {/* Preview Image */}
-                                            <div className="aspect-[9/16] bg-black relative group/img cursor-pointer" onClick={() => handleGenerateSceneImage(scene.id)}>
-                                                {scene.imageUrl ? (
+                                            <div className="aspect-[9/16] bg-black relative group/img" >
+                                                {scene.videoUrl ? (
+                                                    <video src={scene.videoUrl} className="w-full h-full object-cover" controls autoPlay loop />
+                                                ) : scene.imageUrl ? (
                                                     <img src={scene.imageUrl} className="w-full h-full object-cover" alt={scene.title} />
                                                 ) : (
-                                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                                                    <div onClick={() => handleGenerateSceneImage(scene.id)} className="absolute inset-0 flex flex-col items-center justify-center gap-3 cursor-pointer">
                                                         {scene.isGeneratingImage ? (
                                                             <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
                                                         ) : (
@@ -360,7 +468,6 @@ const StoryBoardStudio: React.FC<StoryBoardStudioProps> = ({ onBack }) => {
                                                 </div>
                                             </div>
 
-                                            {/* Info */}
                                             <div className="p-5 space-y-4">
                                                 <div>
                                                     <h4 className="text-xs font-black uppercase tracking-widest text-cyan-500 mb-1">{scene.title}</h4>
@@ -383,22 +490,35 @@ const StoryBoardStudio: React.FC<StoryBoardStudioProps> = ({ onBack }) => {
                                                     </div>
                                                 </div>
 
-                                                <div className="flex gap-2">
-                                                    <button 
-                                                        onClick={() => handleGenerateSceneImage(scene.id)}
-                                                        className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
-                                                    >
-                                                        Re-Render
-                                                    </button>
+                                                <div className="flex flex-col gap-2">
                                                     {scene.imageUrl && (
-                                                        <a 
-                                                            href={scene.imageUrl} 
-                                                            download={`scene-${scene.number}.png`}
-                                                            className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-all"
+                                                        <button 
+                                                            onClick={() => handleGenerateSceneVideo(scene.id)}
+                                                            disabled={scene.isGeneratingVideo}
+                                                            className="w-full py-2 bg-teal-600 hover:bg-teal-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all flex items-center justify-center gap-2 disabled:bg-slate-700"
                                                         >
-                                                            <Download className="w-4 h-4" />
-                                                        </a>
+                                                            {scene.isGeneratingVideo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                                                            {scene.isGeneratingVideo ? 'Creating Video...' : 'Generate Video'}
+                                                        </button>
                                                     )}
+                                                    <div className="flex gap-2">
+                                                        <button 
+                                                            onClick={() => handleGenerateSceneImage(scene.id)}
+                                                            className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
+                                                        >
+                                                            {scene.imageUrl ? 'Re-Render' : 'Render'}
+                                                        </button>
+                                                        {scene.imageUrl && !scene.videoUrl && (
+                                                            <a href={scene.imageUrl} download={`scene-${scene.number}.png`} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-all">
+                                                                <Download className="w-4 h-4" />
+                                                            </a>
+                                                        )}
+                                                        {scene.videoUrl && (
+                                                            <a href={scene.videoUrl} download={`scene-video-${scene.number}.mp4`} className="p-2 bg-green-600 hover:bg-green-500 rounded-lg text-white transition-all">
+                                                                <Download className="w-4 h-4" />
+                                                            </a>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
