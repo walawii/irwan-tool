@@ -28,6 +28,23 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full mx-auto">
           
+           {/* Image to Video Card */}
+          <button 
+            onClick={() => onNavigate('image-to-video')}
+            className="group relative bg-slate-900/50 border border-slate-700 hover:border-teal-400 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(45,212,191,0.15)] flex flex-col min-h-[16rem]"
+          >
+            <div className="bg-teal-400/10 w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <Film className="w-5 h-5 text-teal-400" />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-teal-400 transition-colors uppercase tracking-tight">Image to Video</h3>
+            <p className="text-slate-400 text-[10px] mb-6 leading-relaxed">
+              Animate any image with a text prompt using Google's Veo AI model.
+            </p>
+            <div className="mt-auto flex items-center text-teal-400 text-[10px] font-semibold uppercase tracking-widest">
+              Generate Video <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </button>
+          
           {/* Story Board Studio Card */}
           <button 
             onClick={() => onNavigate('story-board')}
