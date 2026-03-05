@@ -45,21 +45,24 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
         const file = e.target.files?.[0];
         if (file) {
             const url = URL.createObjectURL(file);
-            if (type === 'bg') updateActiveItem({ bgVideo: { url, file }, generatedUrl: null });
-            else {
-                // When uploading overlay, try to set a default height that maintains aspect ratio
+            if (type === 'bg') {
+                updateActiveItem({ bgVideo: { url, file }, generatedUrl: null });
+            } else {
                 const tempVideo = document.createElement('video');
                 tempVideo.src = url;
                 tempVideo.onloadedmetadata = () => {
                     const ratio = tempVideo.videoWidth / tempVideo.videoHeight;
-                    // For a 9:16 canvas (720x1280), if width is 40% (288px), 
-                    // height should be (288 / ratio) which is (0.4 * 720 / ratio) / 1280 of canvas height
                     const hPercent = (0.4 * 720 / ratio) / 1280 * 100;
-                    updateActiveItem({ 
-                        overlayVideo: { url, file }, 
-                        generatedUrl: null,
-                        config: { ...activeItem.config, height: Math.round(hPercent) }
-                    });
+                    
+                    setItems(prev => prev.map(item => {
+                        if (item.id !== activeId) return item;
+                        return { 
+                            ...item, 
+                            overlayVideo: { url, file }, 
+                            generatedUrl: null,
+                            config: { ...item.config, height: Math.round(hPercent) }
+                        };
+                    }));
                 };
             }
             setIsPlaying(false);
@@ -189,6 +192,7 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
         ]);
 
         const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        if (audioCtx.state === 'suspended') await audioCtx.resume();
         const dest = audioCtx.createMediaStreamDestination();
         
         const bgSource = audioCtx.createMediaElementSource(bgV);
@@ -203,7 +207,11 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
             dest.stream.getAudioTracks()[0]
         ]);
 
-        const recorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm;codecs=vp9,opus' });
+        const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') 
+            ? 'video/webm;codecs=vp9,opus' 
+            : 'video/webm';
+        
+        const recorder = new MediaRecorder(combinedStream, { mimeType });
         const chunks: Blob[] = [];
 
         return new Promise((resolve, reject) => {
@@ -414,6 +422,23 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                                         <input type="range" min="0" max="100" value={activeItem.config.y} onChange={(e) => updateActiveItem({ config: { y: Number(e.target.value) } })} className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
                                     </div>
                                 </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <div className="flex justify-between text-[9px] text-slate-500 uppercase mb-2">
+                                            <span className="flex items-center gap-1"><RotateCw className="w-3 h-3" /> Rotation</span>
+                                            <span className="text-amber-500">{activeItem.config.rotation}°</span>
+                                        </div>
+                                        <input type="range" min="-180" max="180" value={activeItem.config.rotation} onChange={(e) => updateActiveItem({ config: { rotation: Number(e.target.value) } })} className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between text-[9px] text-slate-500 uppercase mb-2">
+                                            <span className="flex items-center gap-1"><Sun className="w-3 h-3" /> Opacity</span>
+                                            <span className="text-amber-500">{Math.round(activeItem.config.opacity * 100)}%</span>
+                                        </div>
+                                        <input type="range" min="0" max="1" step="0.01" value={activeItem.config.opacity} onChange={(e) => updateActiveItem({ config: { opacity: Number(e.target.value) } })} className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -442,8 +467,8 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                     <div className="relative w-full max-w-[280px] lg:max-w-[300px] aspect-[9/16] bg-slate-900 rounded-[40px] overflow-hidden shadow-2xl border-4 lg:border-8 border-slate-800 ring-1 ring-slate-700 group">
                         <canvas ref={canvasRef} width={720} height={1280} className="w-full h-full object-cover" />
                         
-                        <video ref={bgVideoEl} src={activeItem.bgVideo?.url} loop muted playsInline className="hidden" onEnded={() => setIsPlaying(false)} />
-                        <video ref={overlayVideoEl} src={activeItem.overlayVideo?.url} loop muted playsInline className="hidden" onEnded={() => setIsPlaying(false)} />
+                        <video ref={bgVideoEl} src={activeItem.bgVideo?.url} loop muted playsInline className="absolute opacity-0 pointer-events-none" onEnded={() => setIsPlaying(false)} />
+                        <video ref={overlayVideoEl} src={activeItem.overlayVideo?.url} loop muted playsInline className="absolute opacity-0 pointer-events-none" onEnded={() => setIsPlaying(false)} />
 
                         {activeItem.bgVideo && activeItem.overlayVideo && (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={togglePlay}>
