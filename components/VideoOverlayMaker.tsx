@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Upload, Layers, Video, Play, Pause, Download, Loader2, Move, Maximize, Smartphone, Trash2, RefreshCw, Plus, List, CheckCircle, AlertCircle, MoveHorizontal, MoveVertical, RotateCw, Sun, ChevronUp, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Upload, Layers, Video, Play, Pause, Download, Loader2, Move, Maximize, Smartphone, Trash2, RefreshCw, Plus, List, CheckCircle, AlertCircle, MoveHorizontal, MoveVertical, RotateCw, Sun, ChevronUp, ChevronDown, Scissors, Type, Type as TextIcon, Volume2, VolumeX, Clock } from 'lucide-react';
 import { OverlayItem } from '../types';
 
 interface VideoOverlayMakerProps {
@@ -14,13 +14,27 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
         overlayVideo: null,
         status: 'idle',
         generatedUrl: null,
-        config: { x: 50, y: 50, width: 40, height: 40, opacity: 1, rotation: 0 }
+        config: { 
+            x: 50, 
+            y: 50, 
+            scale: 40, 
+            opacity: 1, 
+            rotation: 0,
+            trimStart: 0,
+            trimEnd: 0,
+            topText: '',
+            bottomText: '',
+            fontSize: 24
+        }
     }]);
     const [activeId, setActiveId] = useState<string>(items[0].id);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
     const [progress, setProgress] = useState('');
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
+    const [isMuted, setIsMuted] = useState(false);
 
     const activeItem = items.find(i => i.id === activeId) || items[0];
 
@@ -51,16 +65,13 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                 const tempVideo = document.createElement('video');
                 tempVideo.src = url;
                 tempVideo.onloadedmetadata = () => {
-                    const ratio = tempVideo.videoWidth / tempVideo.videoHeight;
-                    const hPercent = (0.4 * 720 / ratio) / 1280 * 100;
-                    
                     setItems(prev => prev.map(item => {
                         if (item.id !== activeId) return item;
                         return { 
                             ...item, 
                             overlayVideo: { url, file }, 
                             generatedUrl: null,
-                            config: { ...item.config, height: Math.round(hPercent) }
+                            config: { ...item.config, trimEnd: tempVideo.duration }
                         };
                     }));
                 };
@@ -91,7 +102,16 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
     };
 
     const resetTransform = () => {
-        updateActiveItem({ config: { x: 50, y: 50, width: 40, height: 40, opacity: 1, rotation: 0 } });
+        updateActiveItem({ config: { 
+            x: 50, 
+            y: 50, 
+            scale: 40, 
+            opacity: 1, 
+            rotation: 0,
+            topText: '',
+            bottomText: '',
+            fontSize: 24
+        } });
     };
 
     const togglePlay = () => {
@@ -105,10 +125,24 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                 bgVideoEl.current.currentTime = 0;
                 overlayVideoEl.current.currentTime = 0;
             }
+            // Sync videos
+            bgVideoEl.current.currentTime = overlayVideoEl.current.currentTime;
             bgVideoEl.current.play();
             overlayVideoEl.current.play();
         }
         setIsPlaying(!isPlaying);
+    };
+
+    const handleSeek = (time: number) => {
+        if (bgVideoEl.current) bgVideoEl.current.currentTime = time;
+        if (overlayVideoEl.current) overlayVideoEl.current.currentTime = time;
+        setCurrentTime(time);
+    };
+
+    const formatTime = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
     const drawFrame = (ctx: CanvasRenderingContext2D, width: number, height: number, item: OverlayItem) => {
@@ -133,9 +167,10 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
         // Draw Overlay Video
         if (overlayVideoEl.current && overlayVideoEl.current.readyState >= 2) {
             const v = overlayVideoEl.current;
+            const vRatio = v.videoWidth / v.videoHeight;
             
-            const oWidth = (width * item.config.width) / 100;
-            const oHeight = (height * item.config.height) / 100;
+            const oWidth = (width * item.config.scale) / 100;
+            const oHeight = oWidth / vRatio;
             
             const ox = (width * item.config.x) / 100;
             const oy = (height * item.config.y) / 100;
@@ -150,6 +185,25 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
             ctx.drawImage(v, -oWidth / 2, -oHeight / 2, oWidth, oHeight);
             ctx.restore();
         }
+
+        // Draw Text Overlays
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'white';
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 4;
+        ctx.font = `bold ${item.config.fontSize}px Inter, sans-serif`;
+
+        if (item.config.topText) {
+            ctx.strokeText(item.config.topText, width / 2, 80);
+            ctx.fillText(item.config.topText, width / 2, 80);
+        }
+
+        if (item.config.bottomText) {
+            ctx.strokeText(item.config.bottomText, width / 2, height - 80);
+            ctx.fillText(item.config.bottomText, width / 2, height - 80);
+        }
+        ctx.restore();
     };
 
     useEffect(() => {
@@ -191,6 +245,10 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
             new Promise(r => ovV.onloadedmetadata = r)
         ]);
 
+        // Set start time
+        ovV.currentTime = item.config.trimStart;
+        bgV.currentTime = 0;
+
         const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
         if (audioCtx.state === 'suspended') await audioCtx.resume();
         const dest = audioCtx.createMediaStreamDestination();
@@ -227,9 +285,10 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
             ovV.play();
 
             const renderLoop = () => {
-                if (ovV.ended || ovV.paused) {
+                if (ovV.currentTime >= item.config.trimEnd || ovV.ended || ovV.paused) {
                     recorder.stop();
                     bgV.pause();
+                    ovV.pause();
                     return;
                 }
                 
@@ -246,8 +305,9 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                 }
                 ctx.drawImage(bgV, dx, dy, dw, dh);
 
-                const oWidth = (canvas.width * item.config.width) / 100;
-                const oHeight = (canvas.height * item.config.height) / 100;
+                const ovRatio = ovV.videoWidth / ovV.videoHeight;
+                const oWidth = (canvas.width * item.config.scale) / 100;
+                const oHeight = oWidth / ovRatio;
                 const ox = (canvas.width * item.config.x) / 100;
                 const oy = (canvas.height * item.config.y) / 100;
 
@@ -258,7 +318,26 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                 ctx.drawImage(ovV, -oWidth / 2, -oHeight / 2, oWidth, oHeight);
                 ctx.restore();
 
-                setProgress(`Processing: ${Math.floor(ovV.currentTime)}s / ${Math.floor(ovV.duration)}s`);
+                // Draw Text
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.fillStyle = 'white';
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 6;
+                ctx.font = `bold ${item.config.fontSize * 2}px Inter, sans-serif`;
+
+                if (item.config.topText) {
+                    ctx.strokeText(item.config.topText, canvas.width / 2, 120);
+                    ctx.fillText(item.config.topText, canvas.width / 2, 120);
+                }
+
+                if (item.config.bottomText) {
+                    ctx.strokeText(item.config.bottomText, canvas.width / 2, canvas.height - 120);
+                    ctx.fillText(item.config.bottomText, canvas.width / 2, canvas.height - 120);
+                }
+                ctx.restore();
+
+                setProgress(`Processing: ${Math.floor(ovV.currentTime - item.config.trimStart)}s / ${Math.floor(item.config.trimEnd - item.config.trimStart)}s`);
                 requestAnimationFrame(renderLoop);
             };
             renderLoop();
@@ -389,21 +468,12 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                             </div>
 
                             <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <div className="flex justify-between text-[9px] text-slate-500 uppercase mb-2">
-                                            <span className="flex items-center gap-1"><MoveHorizontal className="w-3 h-3" /> Width</span>
-                                            <span className="text-amber-500">{activeItem.config.width}%</span>
-                                        </div>
-                                        <input type="range" min="5" max="150" value={activeItem.config.width} onChange={(e) => updateActiveItem({ config: { width: Number(e.target.value) } })} className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                                <div>
+                                    <div className="flex justify-between text-[9px] text-slate-500 uppercase mb-2">
+                                        <span className="flex items-center gap-1"><Maximize className="w-3 h-3" /> Zoom (Scale)</span>
+                                        <span className="text-amber-500">{activeItem.config.scale}%</span>
                                     </div>
-                                    <div>
-                                        <div className="flex justify-between text-[9px] text-slate-500 uppercase mb-2">
-                                            <span className="flex items-center gap-1"><MoveVertical className="w-3 h-3" /> Height</span>
-                                            <span className="text-amber-500">{activeItem.config.height}%</span>
-                                        </div>
-                                        <input type="range" min="5" max="150" value={activeItem.config.height} onChange={(e) => updateActiveItem({ config: { height: Number(e.target.value) } })} className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
-                                    </div>
+                                    <input type="range" min="5" max="200" value={activeItem.config.scale} onChange={(e) => updateActiveItem({ config: { scale: Number(e.target.value) } })} className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
@@ -440,6 +510,57 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                                     </div>
                                 </div>
                             </div>
+
+                            <div className="space-y-4 pt-4 border-t border-slate-800">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                    <Scissors className="w-3 h-3" /> Trim Video
+                                </label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <div className="flex justify-between text-[9px] text-slate-500 uppercase mb-2">
+                                            <span>Start</span>
+                                            <span className="text-amber-500">{activeItem.config.trimStart.toFixed(1)}s</span>
+                                        </div>
+                                        <input type="range" min="0" max={activeItem.config.trimEnd} step="0.1" value={activeItem.config.trimStart} onChange={(e) => updateActiveItem({ config: { trimStart: Number(e.target.value) } })} className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between text-[9px] text-slate-500 uppercase mb-2">
+                                            <span>End</span>
+                                            <span className="text-amber-500">{activeItem.config.trimEnd.toFixed(1)}s</span>
+                                        </div>
+                                        <input type="range" min={activeItem.config.trimStart} max={overlayVideoEl.current?.duration || 100} step="0.1" value={activeItem.config.trimEnd} onChange={(e) => updateActiveItem({ config: { trimEnd: Number(e.target.value) } })} className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 pt-4 border-t border-slate-800">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                    <TextIcon className="w-3 h-3" /> Text Overlay
+                                </label>
+                                <div className="space-y-3">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Top Text" 
+                                        value={activeItem.config.topText}
+                                        onChange={(e) => updateActiveItem({ config: { topText: e.target.value } })}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs focus:border-amber-500 outline-none transition-colors"
+                                    />
+                                    <input 
+                                        type="text" 
+                                        placeholder="Bottom Text" 
+                                        value={activeItem.config.bottomText}
+                                        onChange={(e) => updateActiveItem({ config: { bottomText: e.target.value } })}
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs focus:border-amber-500 outline-none transition-colors"
+                                    />
+                                    <div>
+                                        <div className="flex justify-between text-[9px] text-slate-500 uppercase mb-2">
+                                            <span>Font Size</span>
+                                            <span className="text-amber-500">{activeItem.config.fontSize}px</span>
+                                        </div>
+                                        <input type="range" min="12" max="100" value={activeItem.config.fontSize} onChange={(e) => updateActiveItem({ config: { fontSize: Number(e.target.value) } })} className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -467,15 +588,66 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                     <div className="relative w-full max-w-[280px] lg:max-w-[300px] aspect-[9/16] bg-slate-900 rounded-[40px] overflow-hidden shadow-2xl border-4 lg:border-8 border-slate-800 ring-1 ring-slate-700 group">
                         <canvas ref={canvasRef} width={720} height={1280} className="w-full h-full object-cover" />
                         
-                        <video ref={bgVideoEl} src={activeItem.bgVideo?.url} loop muted playsInline className="absolute opacity-0 pointer-events-none" onEnded={() => setIsPlaying(false)} />
-                        <video ref={overlayVideoEl} src={activeItem.overlayVideo?.url} loop muted playsInline className="absolute opacity-0 pointer-events-none" onEnded={() => setIsPlaying(false)} />
+                        <video 
+                            ref={bgVideoEl} 
+                            src={activeItem.bgVideo?.url} 
+                            loop 
+                            muted={isMuted} 
+                            playsInline 
+                            className="absolute opacity-0 pointer-events-none" 
+                            onEnded={() => setIsPlaying(false)} 
+                        />
+                        <video 
+                            ref={overlayVideoEl} 
+                            src={activeItem.overlayVideo?.url} 
+                            loop 
+                            muted={isMuted} 
+                            playsInline 
+                            className="absolute opacity-0 pointer-events-none" 
+                            onEnded={() => setIsPlaying(false)} 
+                            onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+                            onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+                        />
 
                         {activeItem.bgVideo && activeItem.overlayVideo && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={togglePlay}>
-                                <div className="p-4 lg:p-6 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
-                                    {isPlaying ? <Pause className="w-8 h-8 lg:w-12 lg:h-12 text-white fill-current" /> : <Play className="w-8 h-8 lg:w-12 lg:h-12 text-white fill-current" />}
+                            <>
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={togglePlay}>
+                                    <div className="p-4 lg:p-6 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
+                                        {isPlaying ? <Pause className="w-8 h-8 lg:w-12 lg:h-12 text-white fill-current" /> : <Play className="w-8 h-8 lg:w-12 lg:h-12 text-white fill-current" />}
+                                    </div>
                                 </div>
-                            </div>
+
+                                {/* Time Display Overlay */}
+                                <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2 text-[10px] font-mono">
+                                    <Clock className="w-3 h-3 text-amber-500" />
+                                    <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
+                                </div>
+
+                                {/* Volume Toggle Overlay */}
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+                                    className="absolute bottom-20 right-6 p-2.5 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-white hover:bg-white/20 transition-all"
+                                >
+                                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                                </button>
+
+                                {/* Progress Bar Overlay */}
+                                <div className="absolute bottom-8 left-6 right-6 group/progress" onClick={(e) => e.stopPropagation()}>
+                                    <input 
+                                        type="range" 
+                                        min="0" 
+                                        max={duration} 
+                                        step="0.1" 
+                                        value={currentTime} 
+                                        onChange={(e) => handleSeek(Number(e.target.value))}
+                                        className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-amber-500 hover:h-2 transition-all"
+                                    />
+                                    <div className="flex justify-between mt-1 opacity-0 group-hover/progress:opacity-100 transition-opacity">
+                                        <span className="text-[8px] text-white/60">{formatTime(activeItem.config.trimStart)}</span>
+                                        <span className="text-[8px] text-white/60">{formatTime(activeItem.config.trimEnd)}</span>
+                                    </div>
+                                </div>
+                            </>
                         )}
 
                         {!activeItem.bgVideo && !activeItem.overlayVideo && (

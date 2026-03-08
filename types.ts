@@ -68,10 +68,14 @@ export interface OverlayItem {
   config: {
     x: number;
     y: number;
-    width: number;
-    height: number;
+    scale: number;
     opacity: number;
     rotation: number;
+    trimStart: number;
+    trimEnd: number;
+    topText: string;
+    bottomText: string;
+    fontSize: number;
   };
 }
 
