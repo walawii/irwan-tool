@@ -711,15 +711,48 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                                 </div>
 
                                 {/* Volume Toggle Overlay */}
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
-                                    className="absolute bottom-20 right-6 p-2.5 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-white hover:bg-white/20 transition-all"
-                                >
-                                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                                </button>
+                                <div className="absolute bottom-20 right-6 flex flex-col gap-2">
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); setIsMuted(!isMuted); }}
+                                        className="p-2.5 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-white hover:bg-white/20 transition-all shadow-lg"
+                                        title="Toggle Mute"
+                                    >
+                                        {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                                    </button>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); updateActiveItem({ config: { trimStart: currentTime } }); }}
+                                        className="p-2.5 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-amber-500 hover:bg-white/20 transition-all shadow-lg"
+                                        title="Set Current as Start"
+                                    >
+                                        <div className="flex flex-col items-center">
+                                            <Scissors className="w-4 h-4" />
+                                            <span className="text-[6px] font-bold mt-0.5">START</span>
+                                        </div>
+                                    </button>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); updateActiveItem({ config: { trimEnd: currentTime } }); }}
+                                        className="p-2.5 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-amber-500 hover:bg-white/20 transition-all shadow-lg"
+                                        title="Set Current as End"
+                                    >
+                                        <div className="flex flex-col items-center">
+                                            <Scissors className="w-4 h-4" />
+                                            <span className="text-[6px] font-bold mt-0.5">END</span>
+                                        </div>
+                                    </button>
+                                </div>
 
                                 {/* Progress Bar Overlay */}
                                 <div className="absolute bottom-8 left-6 right-6 group/progress" onClick={(e) => e.stopPropagation()}>
+                                    <div className="relative h-1 w-full bg-white/20 rounded-lg overflow-hidden mb-1">
+                                        {/* Trim Range Highlight */}
+                                        <div 
+                                            className="absolute h-full bg-amber-500/30 border-x border-amber-500/50"
+                                            style={{
+                                                left: `${(activeItem.config.trimStart / duration) * 100}%`,
+                                                width: `${((activeItem.config.trimEnd - activeItem.config.trimStart) / duration) * 100}%`
+                                            }}
+                                        />
+                                    </div>
                                     <input 
                                         type="range" 
                                         min="0" 
@@ -727,11 +760,15 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                                         step="0.1" 
                                         value={currentTime} 
                                         onChange={(e) => handleSeek(Number(e.target.value))}
-                                        className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-amber-500 hover:h-2 transition-all"
+                                        className="absolute top-0 left-0 w-full h-1 bg-transparent appearance-none cursor-pointer accent-amber-500 hover:h-2 transition-all z-10"
                                     />
-                                    <div className="flex justify-between mt-1 opacity-0 group-hover/progress:opacity-100 transition-opacity">
-                                        <span className="text-[8px] text-white/60">{formatTime(activeItem.config.trimStart)}</span>
-                                        <span className="text-[8px] text-white/60">{formatTime(activeItem.config.trimEnd)}</span>
+                                    <div className="flex justify-between mt-2 opacity-0 group-hover/progress:opacity-100 transition-opacity">
+                                        <span className={`text-[8px] font-bold ${currentTime >= activeItem.config.trimStart && currentTime <= activeItem.config.trimEnd ? 'text-amber-500' : 'text-white/60'}`}>
+                                            {formatTime(activeItem.config.trimStart)}
+                                        </span>
+                                        <span className={`text-[8px] font-bold ${currentTime >= activeItem.config.trimStart && currentTime <= activeItem.config.trimEnd ? 'text-amber-500' : 'text-white/60'}`}>
+                                            {formatTime(activeItem.config.trimEnd)}
+                                        </span>
                                     </div>
                                 </div>
                             </>
