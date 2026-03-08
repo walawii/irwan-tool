@@ -302,23 +302,43 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
         const chunks: Blob[] = [];
 
         return new Promise((resolve, reject) => {
-            recorder.ondataavailable = e => chunks.push(e.data);
+            recorder.ondataavailable = e => {
+                if (e.data.size > 0) chunks.push(e.data);
+            };
             recorder.onstop = () => {
-                const blob = new Blob(chunks, { type: 'video/webm' });
+                const blob = new Blob(chunks, { type: mimeType });
                 resolve(URL.createObjectURL(blob));
                 audioCtx.close();
             };
+            recorder.onerror = (err) => reject(err);
 
             recorder.start();
-            if (item.bgMedia!.type === 'video') (bgElement as HTMLVideoElement).play();
-            ovV.play();
+            
+            const startPlayback = async () => {
+                try {
+                    if (item.bgMedia!.type === 'video') await (bgElement as HTMLVideoElement).play();
+                    await ovV.play();
+                } catch (err) {
+                    console.warn("Playback failed, but continuing capture:", err);
+                }
+            };
+            startPlayback();
 
             const renderLoop = () => {
-                if (ovV.currentTime >= item.config.trimEnd || ovV.ended || ovV.paused) {
+                // Check if we reached the end
+                const isEnded = ovV.currentTime >= item.config.trimEnd || ovV.ended;
+                
+                if (isEnded) {
                     recorder.stop();
                     if (item.bgMedia!.type === 'video') (bgElement as HTMLVideoElement).pause();
                     ovV.pause();
                     return;
+                }
+                
+                // If paused unexpectedly, try to resume
+                if (ovV.paused && !isEnded) {
+                    ovV.play().catch(() => {});
+                    if (item.bgMedia!.type === 'video') (bgElement as HTMLVideoElement).play().catch(() => {});
                 }
                 
                 ctx.fillStyle = '#000';
@@ -401,7 +421,7 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
     };
 
     const handleBatchExport = async () => {
-        const validItems = items.filter(i => i.bgVideo && i.overlayVideo && i.status !== 'done');
+        const validItems = items.filter(i => i.bgMedia && i.overlayVideo && i.status !== 'done');
         if (validItems.length === 0) return;
 
         setIsProcessing(true);
@@ -419,8 +439,11 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                 if (item.overlayVideo) {
                     triggerDownload(url, item.overlayVideo.file.name);
                 }
+                
+                // Small delay between items
+                await new Promise(r => setTimeout(r, 1000));
             } catch (err) {
-                console.error(err);
+                console.error("Export error for item", item.id, err);
                 setItems(prev => prev.map(v => v.id === item.id ? { ...v, status: 'error' } : v));
             }
         }
