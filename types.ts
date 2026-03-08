@@ -61,7 +61,7 @@ export interface FrameSettings {
 
 export interface OverlayItem {
   id: string;
-  bgVideo: { url: string; file: File } | null;
+  bgMedia: { url: string; file: File; type: 'video' | 'image' } | null;
   overlayVideo: { url: string; file: File } | null;
   status: 'idle' | 'processing' | 'done' | 'error';
   generatedUrl: string | null;

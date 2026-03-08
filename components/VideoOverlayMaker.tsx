@@ -10,7 +10,7 @@ interface VideoOverlayMakerProps {
 const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
     const [items, setItems] = useState<OverlayItem[]>([{
         id: Math.random().toString(36).substr(2, 9),
-        bgVideo: null,
+        bgMedia: null,
         overlayVideo: null,
         status: 'idle',
         generatedUrl: null,
@@ -43,6 +43,7 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     
     const bgVideoEl = useRef<HTMLVideoElement>(null);
+    const bgImageEl = useRef<HTMLImageElement>(null);
     const overlayVideoEl = useRef<HTMLVideoElement>(null);
 
     const updateActiveItem = (updates: Partial<OverlayItem> | { config: Partial<OverlayItem['config']> }) => {
@@ -55,12 +56,13 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
         }));
     };
 
-    const handleVideoUpload = (type: 'bg' | 'overlay', e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleMediaUpload = (type: 'bg' | 'overlay', e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             const url = URL.createObjectURL(file);
             if (type === 'bg') {
-                updateActiveItem({ bgVideo: { url, file }, generatedUrl: null });
+                const isImage = file.type.startsWith('image/');
+                updateActiveItem({ bgMedia: { url, file, type: isImage ? 'image' : 'video' }, generatedUrl: null });
             } else {
                 const tempVideo = document.createElement('video');
                 tempVideo.src = url;
@@ -84,7 +86,7 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
     const addItem = () => {
         const newItem: OverlayItem = {
             id: Math.random().toString(36).substr(2, 9),
-            bgVideo: null,
+            bgMedia: null,
             overlayVideo: activeItem.overlayVideo, // Preserve overlay by default
             status: 'idle',
             generatedUrl: null,
@@ -115,19 +117,21 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
     };
 
     const togglePlay = () => {
-        if (!bgVideoEl.current || !overlayVideoEl.current) return;
+        if (!overlayVideoEl.current) return;
         
         if (isPlaying) {
-            bgVideoEl.current.pause();
+            bgVideoEl.current?.pause();
             overlayVideoEl.current.pause();
         } else {
             if (overlayVideoEl.current.ended) {
-                bgVideoEl.current.currentTime = 0;
+                if (bgVideoEl.current) bgVideoEl.current.currentTime = 0;
                 overlayVideoEl.current.currentTime = 0;
             }
             // Sync videos
-            bgVideoEl.current.currentTime = overlayVideoEl.current.currentTime;
-            bgVideoEl.current.play();
+            if (bgVideoEl.current) {
+                bgVideoEl.current.currentTime = overlayVideoEl.current.currentTime;
+                bgVideoEl.current.play();
+            }
             overlayVideoEl.current.play();
         }
         setIsPlaying(!isPlaying);
@@ -149,19 +153,33 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, width, height);
 
-        // Draw Background Video
-        if (bgVideoEl.current && bgVideoEl.current.readyState >= 2) {
-            const v = bgVideoEl.current;
-            const vRatio = v.videoWidth / v.videoHeight;
-            const cRatio = width / height;
-            let dw, dh, dx, dy;
+        // Draw Background
+        if (item.bgMedia) {
+            if (item.bgMedia.type === 'video' && bgVideoEl.current && bgVideoEl.current.readyState >= 2) {
+                const v = bgVideoEl.current;
+                const vRatio = v.videoWidth / v.videoHeight;
+                const cRatio = width / height;
+                let dw, dh, dx, dy;
 
-            if (vRatio > cRatio) {
-                dh = height; dw = dh * vRatio; dx = (width - dw) / 2; dy = 0;
-            } else {
-                dw = width; dh = dw / vRatio; dx = 0; dy = (height - dh) / 2;
+                if (vRatio > cRatio) {
+                    dh = height; dw = dh * vRatio; dx = (width - dw) / 2; dy = 0;
+                } else {
+                    dw = width; dh = dw / vRatio; dx = 0; dy = (height - dh) / 2;
+                }
+                ctx.drawImage(v, dx, dy, dw, dh);
+            } else if (item.bgMedia.type === 'image' && bgImageEl.current && bgImageEl.current.complete) {
+                const img = bgImageEl.current;
+                const iRatio = img.naturalWidth / img.naturalHeight;
+                const cRatio = width / height;
+                let dw, dh, dx, dy;
+
+                if (iRatio > cRatio) {
+                    dh = height; dw = dh * iRatio; dx = (width - dw) / 2; dy = 0;
+                } else {
+                    dw = width; dh = dw / iRatio; dx = 0; dy = (height - dh) / 2;
+                }
+                ctx.drawImage(img, dx, dy, dw, dh);
             }
-            ctx.drawImage(v, dx, dy, dw, dh);
         }
 
         // Draw Overlay Video
@@ -222,7 +240,7 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
     }, [activeId, items, isPlaying]);
 
     const processSingleExport = async (item: OverlayItem): Promise<string> => {
-        if (!item.bgVideo || !item.overlayVideo) throw new Error("Missing media");
+        if (!item.bgMedia || !item.overlayVideo) throw new Error("Missing media");
 
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -230,10 +248,18 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
         canvas.width = 720;
         canvas.height = 1280;
 
-        const bgV = document.createElement('video');
-        bgV.src = item.bgVideo.url;
-        bgV.muted = false;
-        bgV.playsInline = true;
+        let bgElement: HTMLVideoElement | HTMLImageElement;
+        if (item.bgMedia.type === 'video') {
+            const bgV = document.createElement('video');
+            bgV.src = item.bgMedia.url;
+            bgV.muted = false;
+            bgV.playsInline = true;
+            bgElement = bgV;
+        } else {
+            const bgImg = new Image();
+            bgImg.src = item.bgMedia.url;
+            bgElement = bgImg;
+        }
 
         const ovV = document.createElement('video');
         ovV.src = item.overlayVideo.url;
@@ -241,22 +267,25 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
         ovV.playsInline = true;
 
         await Promise.all([
-            new Promise(r => bgV.onloadedmetadata = r),
+            item.bgMedia.type === 'video' 
+                ? new Promise(r => (bgElement as HTMLVideoElement).onloadedmetadata = r)
+                : new Promise(r => (bgElement as HTMLImageElement).onload = r),
             new Promise(r => ovV.onloadedmetadata = r)
         ]);
 
         // Set start time
         ovV.currentTime = item.config.trimStart;
-        bgV.currentTime = 0;
+        if (item.bgMedia.type === 'video') (bgElement as HTMLVideoElement).currentTime = 0;
 
         const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
         if (audioCtx.state === 'suspended') await audioCtx.resume();
         const dest = audioCtx.createMediaStreamDestination();
         
-        const bgSource = audioCtx.createMediaElementSource(bgV);
+        if (item.bgMedia.type === 'video') {
+            const bgSource = audioCtx.createMediaElementSource(bgElement as HTMLVideoElement);
+            bgSource.connect(dest);
+        }
         const ovSource = audioCtx.createMediaElementSource(ovV);
-        
-        bgSource.connect(dest);
         ovSource.connect(dest);
 
         const videoStream = canvas.captureStream(30);
@@ -281,13 +310,13 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
             };
 
             recorder.start();
-            bgV.play();
+            if (item.bgMedia!.type === 'video') (bgElement as HTMLVideoElement).play();
             ovV.play();
 
             const renderLoop = () => {
                 if (ovV.currentTime >= item.config.trimEnd || ovV.ended || ovV.paused) {
                     recorder.stop();
-                    bgV.pause();
+                    if (item.bgMedia!.type === 'video') (bgElement as HTMLVideoElement).pause();
                     ovV.pause();
                     return;
                 }
@@ -295,15 +324,30 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                 ctx.fillStyle = '#000';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                const vRatio = bgV.videoWidth / bgV.videoHeight;
-                const cRatio = canvas.width / canvas.height;
-                let dw, dh, dx, dy;
-                if (vRatio > cRatio) {
-                    dh = canvas.height; dw = dh * vRatio; dx = (canvas.width - dw) / 2; dy = 0;
+                // Draw Background
+                if (item.bgMedia!.type === 'video') {
+                    const v = bgElement as HTMLVideoElement;
+                    const vRatio = v.videoWidth / v.videoHeight;
+                    const cRatio = canvas.width / canvas.height;
+                    let dw, dh, dx, dy;
+                    if (vRatio > cRatio) {
+                        dh = canvas.height; dw = dh * vRatio; dx = (canvas.width - dw) / 2; dy = 0;
+                    } else {
+                        dw = canvas.width; dh = dw / vRatio; dx = 0; dy = (canvas.height - dh) / 2;
+                    }
+                    ctx.drawImage(v, dx, dy, dw, dh);
                 } else {
-                    dw = canvas.width; dh = dw / vRatio; dx = 0; dy = (canvas.height - dh) / 2;
+                    const img = bgElement as HTMLImageElement;
+                    const iRatio = img.naturalWidth / img.naturalHeight;
+                    const cRatio = canvas.width / canvas.height;
+                    let dw, dh, dx, dy;
+                    if (iRatio > cRatio) {
+                        dh = canvas.height; dw = dh * iRatio; dx = (canvas.width - dw) / 2; dy = 0;
+                    } else {
+                        dw = canvas.width; dh = dw / iRatio; dx = 0; dy = (canvas.height - dh) / 2;
+                    }
+                    ctx.drawImage(img, dx, dy, dw, dh);
                 }
-                ctx.drawImage(bgV, dx, dy, dw, dh);
 
                 const ovRatio = ovV.videoWidth / ovV.videoHeight;
                 const oWidth = (canvas.width * item.config.scale) / 100;
@@ -426,7 +470,7 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                                         {item.status === 'processing' ? <Loader2 className="w-3 h-3 animate-spin text-amber-500" /> :
                                          item.status === 'done' ? <CheckCircle className="w-3 h-3 text-green-500" /> :
                                          <span className="text-[10px] font-bold text-slate-600">#{idx + 1}</span>}
-                                        <span className="text-[10px] font-medium truncate text-slate-400">{item.bgVideo?.file.name || 'Empty slot'}</span>
+                                        <span className="text-[10px] font-medium truncate text-slate-400">{item.bgMedia?.file.name || 'Empty slot'}</span>
                                     </div>
                                     <button onClick={(e) => { e.stopPropagation(); removeItem(item.id); }} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 text-slate-500 hover:text-red-400 rounded transition-all">
                                         <Trash2 className="w-3 h-3" />
@@ -442,13 +486,13 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                         </label>
                         
                         <div className="space-y-2">
-                            <input type="file" accept="video/*" ref={bgInputRef} className="hidden" onChange={(e) => handleVideoUpload('bg', e)} />
-                            <button onClick={() => bgInputRef.current?.click()} className={`w-full py-2.5 px-4 bg-slate-800 border rounded-xl flex items-center gap-3 transition-all ${activeItem.bgVideo ? 'border-amber-500/50' : 'border-slate-700 hover:border-slate-600'}`}>
-                                <Upload className={`w-3.5 h-3.5 ${activeItem.bgVideo ? 'text-amber-500' : 'text-slate-500'}`} />
-                                <span className="text-[11px] font-bold truncate flex-1 text-left">{activeItem.bgVideo?.file.name || 'Background Video'}</span>
+                            <input type="file" accept="video/*,image/*" ref={bgInputRef} className="hidden" onChange={(e) => handleMediaUpload('bg', e)} />
+                            <button onClick={() => bgInputRef.current?.click()} className={`w-full py-2.5 px-4 bg-slate-800 border rounded-xl flex items-center gap-3 transition-all ${activeItem.bgMedia ? 'border-amber-500/50' : 'border-slate-700 hover:border-slate-600'}`}>
+                                <Upload className={`w-3.5 h-3.5 ${activeItem.bgMedia ? 'text-amber-500' : 'text-slate-500'}`} />
+                                <span className="text-[11px] font-bold truncate flex-1 text-left">{activeItem.bgMedia?.file.name || 'Background Media'}</span>
                             </button>
 
-                            <input type="file" accept="video/*" ref={overlayInputRef} className="hidden" onChange={(e) => handleVideoUpload('overlay', e)} />
+                            <input type="file" accept="video/*" ref={overlayInputRef} className="hidden" onChange={(e) => handleMediaUpload('overlay', e)} />
                             <button onClick={() => overlayInputRef.current?.click()} className={`w-full py-2.5 px-4 bg-slate-800 border rounded-xl flex items-center gap-3 transition-all ${activeItem.overlayVideo ? 'border-blue-500/50' : 'border-slate-700 hover:border-slate-600'}`}>
                                 <Layers className={`w-3.5 h-3.5 ${activeItem.overlayVideo ? 'text-blue-500' : 'text-slate-500'}`} />
                                 <span className="text-[11px] font-bold truncate flex-1 text-left">{activeItem.overlayVideo?.file.name || 'Overlay Video'}</span>
@@ -517,16 +561,32 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                                 </label>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <div className="flex justify-between text-[9px] text-slate-500 uppercase mb-2">
-                                            <span>Start</span>
-                                            <span className="text-amber-500">{activeItem.config.trimStart.toFixed(1)}s</span>
+                                        <div className="flex justify-between items-center text-[9px] text-slate-500 uppercase mb-2">
+                                            <span>Start (s)</span>
+                                            <input 
+                                                type="number" 
+                                                step="0.1" 
+                                                min="0" 
+                                                max={activeItem.config.trimEnd}
+                                                value={activeItem.config.trimStart}
+                                                onChange={(e) => updateActiveItem({ config: { trimStart: Math.max(0, Math.min(activeItem.config.trimEnd, Number(e.target.value))) } })}
+                                                className="w-14 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-amber-500 text-right focus:border-amber-500 outline-none transition-colors"
+                                            />
                                         </div>
                                         <input type="range" min="0" max={activeItem.config.trimEnd} step="0.1" value={activeItem.config.trimStart} onChange={(e) => updateActiveItem({ config: { trimStart: Number(e.target.value) } })} className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
                                     </div>
                                     <div>
-                                        <div className="flex justify-between text-[9px] text-slate-500 uppercase mb-2">
-                                            <span>End</span>
-                                            <span className="text-amber-500">{activeItem.config.trimEnd.toFixed(1)}s</span>
+                                        <div className="flex justify-between items-center text-[9px] text-slate-500 uppercase mb-2">
+                                            <span>End (s)</span>
+                                            <input 
+                                                type="number" 
+                                                step="0.1" 
+                                                min={activeItem.config.trimStart} 
+                                                max={overlayVideoEl.current?.duration || 100}
+                                                value={activeItem.config.trimEnd}
+                                                onChange={(e) => updateActiveItem({ config: { trimEnd: Math.max(activeItem.config.trimStart, Math.min(overlayVideoEl.current?.duration || 100, Number(e.target.value))) } })}
+                                                className="w-14 bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-amber-500 text-right focus:border-amber-500 outline-none transition-colors"
+                                            />
                                         </div>
                                         <input type="range" min={activeItem.config.trimStart} max={overlayVideoEl.current?.duration || 100} step="0.1" value={activeItem.config.trimEnd} onChange={(e) => updateActiveItem({ config: { trimEnd: Number(e.target.value) } })} className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500" />
                                     </div>
@@ -567,11 +627,11 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
 
                 <div className="p-4 lg:p-6 border-t border-slate-800 bg-slate-900/80 backdrop-blur-md">
                     <button 
-                        disabled={isProcessing || !items.some(i => i.bgVideo && i.overlayVideo && i.status !== 'done')}
+                        disabled={isProcessing || !items.some(i => i.bgMedia && i.overlayVideo && i.status !== 'done')}
                         onClick={handleBatchExport}
                         className={`w-full py-3 lg:py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-xl text-xs lg:text-sm ${isProcessing ? 'bg-slate-700 text-slate-500' : 'bg-amber-600 hover:bg-amber-500 text-white active:scale-95 shadow-amber-900/20'}`}
                     >
-                        {isProcessing ? <><Loader2 className="w-5 h-5 animate-spin" /> {progress}</> : <><Play className="w-5 h-5 fill-current" /> Batch Render ({items.filter(i => i.bgVideo && i.overlayVideo && i.status !== 'done').length})</>}
+                        {isProcessing ? <><Loader2 className="w-5 h-5 animate-spin" /> {progress}</> : <><Play className="w-5 h-5 fill-current" /> Batch Render ({items.filter(i => i.bgMedia && i.overlayVideo && i.status !== 'done').length})</>}
                     </button>
                 </div>
             </div>
@@ -588,15 +648,19 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                     <div className="relative w-full max-w-[280px] lg:max-w-[300px] aspect-[9/16] bg-slate-900 rounded-[40px] overflow-hidden shadow-2xl border-4 lg:border-8 border-slate-800 ring-1 ring-slate-700 group">
                         <canvas ref={canvasRef} width={720} height={1280} className="w-full h-full object-cover" />
                         
-                        <video 
-                            ref={bgVideoEl} 
-                            src={activeItem.bgVideo?.url} 
-                            loop 
-                            muted={isMuted} 
-                            playsInline 
-                            className="absolute opacity-0 pointer-events-none" 
-                            onEnded={() => setIsPlaying(false)} 
-                        />
+                        {activeItem.bgMedia?.type === 'video' ? (
+                            <video 
+                                ref={bgVideoEl} 
+                                src={activeItem.bgMedia.url} 
+                                loop 
+                                muted={isMuted} 
+                                playsInline 
+                                className="absolute opacity-0 pointer-events-none" 
+                                onEnded={() => setIsPlaying(false)} 
+                            />
+                        ) : activeItem.bgMedia?.type === 'image' ? (
+                            <img ref={bgImageEl} src={activeItem.bgMedia.url} className="absolute opacity-0 pointer-events-none" />
+                        ) : null}
                         <video 
                             ref={overlayVideoEl} 
                             src={activeItem.overlayVideo?.url} 
@@ -609,7 +673,7 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                             onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
                         />
 
-                        {activeItem.bgVideo && activeItem.overlayVideo && (
+                        {activeItem.bgMedia && activeItem.overlayVideo && (
                             <>
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={togglePlay}>
                                     <div className="p-4 lg:p-6 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
@@ -650,7 +714,7 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                             </>
                         )}
 
-                        {!activeItem.bgVideo && !activeItem.overlayVideo && (
+                        {!activeItem.bgMedia && !activeItem.overlayVideo && (
                             <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center text-slate-600">
                                 <Maximize className="w-12 h-12 mb-4 opacity-10" />
                                 <p className="text-xs font-bold uppercase tracking-widest">Select Slot & Upload</p>
@@ -673,7 +737,7 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                             </button>
                         )}
                         <button onClick={() => {
-                            if (activeItem.bgVideo) updateActiveItem({ bgVideo: null, generatedUrl: null });
+                            if (activeItem.bgMedia) updateActiveItem({ bgMedia: null, generatedUrl: null });
                             if (activeItem.overlayVideo) updateActiveItem({ overlayVideo: null, generatedUrl: null });
                             setIsPlaying(false);
                         }} className="flex items-center gap-2 px-3 py-2 bg-slate-800 rounded-xl text-[10px] font-bold hover:bg-red-900/20 text-slate-400 hover:text-red-400 transition-all border border-slate-700">
