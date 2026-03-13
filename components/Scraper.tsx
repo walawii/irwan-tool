@@ -39,14 +39,14 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
             targetUrl = 'https://' + targetUrl;
         }
 
-        // List of proxies to try in order
+        // List of proxies to try in order of reliability
         const proxies = [
-            (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
             (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+            (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
             (u: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
             (u: string) => `https://thingproxy.freeboard.io/fetch/${u}`,
             (u: string) => `https://corsproxy.org/?${encodeURIComponent(u)}`,
-            (u: string) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}` // JSON fallback
+            (u: string) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`
         ];
 
         for (const getProxyUrl of proxies) {
@@ -54,13 +54,25 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
                 const proxyUrl = getProxyUrl(targetUrl);
                 const response = await fetchWithTimeout(proxyUrl);
                 
-                if (response.ok) {
+                if (response.status === 200) {
+                    let text = '';
                     if (proxyUrl.includes('allorigins.win/get')) {
                         const data = await response.json();
-                        if (data.contents) return data.contents;
+                        text = data.contents || '';
                     } else {
-                        const text = await response.text();
-                        if (text && text.length > 100) return text; // Basic sanity check
+                        text = await response.text();
+                    }
+
+                    // Sanity check: ensure we didn't get an error page disguised as 200 OK
+                    if (text && text.length > 250) {
+                        const lowerText = text.toLowerCase();
+                        const isErrorPage = 
+                            (lowerText.includes('403 forbidden') && lowerText.length < 1000) || 
+                            (lowerText.includes('access denied') && lowerText.length < 1000) ||
+                            lowerText.includes('captcha-delivery') ||
+                            lowerText.includes('ddos-protection');
+                            
+                        if (!isErrorPage) return text;
                     }
                 }
             } catch (e) {
@@ -68,7 +80,7 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
             }
         }
 
-        throw new Error('Could not fetch content (Blocked by all proxies or Timeout).');
+        throw new Error('Website is highly protected (Cloudflare/403). Try another source.');
     };
 
   const resolveUrl = (baseUrl: string, relativeUrl: string): string => {
