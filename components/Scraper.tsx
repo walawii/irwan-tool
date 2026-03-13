@@ -32,46 +32,44 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
       }
   };
 
-  const fetchHtmlContent = async (url: string): Promise<string> => {
-    // 1. Normalize URL
-    let targetUrl = url.trim();
-    if (!/^https?:\/\//i.test(targetUrl)) {
-        targetUrl = 'https://' + targetUrl;
-    }
-
-    // 2. Try CorsProxy.io (Fastest)
-    try {
-        const response = await fetchWithTimeout(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
-        if (response.ok) {
-            return await response.text();
+    const fetchHtmlContent = async (url: string): Promise<string> => {
+        // 1. Normalize URL
+        let targetUrl = url.trim();
+        if (!/^https?:\/\//i.test(targetUrl)) {
+            targetUrl = 'https://' + targetUrl;
         }
-    } catch (e) {
-        // Continue
-    }
 
-    // 3. Try Primary Proxy (AllOrigins) - Robust
-    try {
-        const response = await fetchWithTimeout(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
-        if (response.ok) {
-            const data = await response.json();
-            if (data.contents) return data.contents;
+        // List of proxies to try in order
+        const proxies = [
+            (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+            (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+            (u: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+            (u: string) => `https://thingproxy.freeboard.io/fetch/${u}`,
+            (u: string) => `https://corsproxy.org/?${encodeURIComponent(u)}`,
+            (u: string) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}` // JSON fallback
+        ];
+
+        for (const getProxyUrl of proxies) {
+            try {
+                const proxyUrl = getProxyUrl(targetUrl);
+                const response = await fetchWithTimeout(proxyUrl);
+                
+                if (response.ok) {
+                    if (proxyUrl.includes('allorigins.win/get')) {
+                        const data = await response.json();
+                        if (data.contents) return data.contents;
+                    } else {
+                        const text = await response.text();
+                        if (text && text.length > 100) return text; // Basic sanity check
+                    }
+                }
+            } catch (e) {
+                // Try next proxy
+            }
         }
-    } catch (e) {
-        // Continue
-    }
 
-    // 4. Try Secondary Proxy (CodeTabs)
-    try {
-        const response = await fetchWithTimeout(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`);
-        if (response.ok) {
-            return await response.text();
-        }
-    } catch (e) {
-        // Continue
-    }
-
-    throw new Error('Could not fetch content (Blocked/Timeout).');
-  };
+        throw new Error('Could not fetch content (Blocked by all proxies or Timeout).');
+    };
 
   const resolveUrl = (baseUrl: string, relativeUrl: string): string => {
       if (!relativeUrl) return '';
