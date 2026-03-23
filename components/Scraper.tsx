@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { ArrowLeft, Search, Download, Trash2, ExternalLink, FileSpreadsheet, Plus, Globe, Loader2, StopCircle, Layers, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Search, Download, Trash2, ExternalLink, FileSpreadsheet, Plus, Globe, Loader2, StopCircle, Layers, Image as ImageIcon, AlertCircle, RefreshCw } from 'lucide-react';
 import { ScrapedArticle } from '../types';
 import * as XLSX from 'xlsx';
 
@@ -221,10 +221,28 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
                   const article = extractArticleData(htmlContent, url);
                   
                   if (article.title && article.title !== 'No Title Found') {
-                      setArticles(prev => [article, ...prev]);
+                      setArticles(prev => {
+                          // Remove any existing error entry for this URL if it exists
+                          const filtered = prev.filter(a => a.url !== url || !a.isError);
+                          return [article, ...filtered];
+                      });
                   }
-              } catch (err) {
+              } catch (err: any) {
                   console.warn(`Failed: ${url}`);
+                  const errorArticle: ScrapedArticle = {
+                      id: Date.now().toString() + Math.random().toString().slice(2, 5),
+                      url: url,
+                      title: 'Failed to Scrape',
+                      firstParagraph: err.message || 'Access Denied or Timeout',
+                      imageUrl: '',
+                      isError: true,
+                      errorMsg: err.message
+                  };
+                  setArticles(prev => {
+                      // Don't add duplicate error entries for the same URL
+                      if (prev.some(a => a.url === url && a.isError)) return prev;
+                      return [errorArticle, ...prev];
+                  });
               } finally {
                   completed++;
                   setScanProgress(`Processed ${completed}/${total}`);
@@ -336,6 +354,33 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
     setArticles(prev => prev.filter(a => a.id !== id));
   };
 
+  const handleRetryScrape = async (article: ScrapedArticle) => {
+      if (isLoading) return;
+      
+      setIsLoading(true);
+      setError(null);
+      setScanProgress(`Retrying ${article.url}...`);
+      
+      try {
+          const htmlContent = await fetchHtmlContent(article.url);
+          const newArticle = extractArticleData(htmlContent, article.url);
+          
+          if (newArticle.title && newArticle.title !== 'No Title Found') {
+              setArticles(prev => prev.map(a => a.id === article.id ? newArticle : a));
+          } else {
+              throw new Error('Still failing to extract data');
+          }
+      } catch (err: any) {
+          setArticles(prev => prev.map(a => a.id === article.id ? {
+              ...a,
+              errorMsg: err.message || 'Failed again'
+          } : a));
+      } finally {
+          setIsLoading(false);
+          setScanProgress('');
+      }
+  };
+
   const getDisplayImage = (url: string) => {
       if (!url) return null;
       return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=200&h=200&fit=cover`;
@@ -444,10 +489,15 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
                     {articles.map((item) => {
                         const displayImg = getDisplayImage(item.imageUrl);
                         return (
-                        <div key={item.id} className="bg-slate-900/50 border border-slate-800 rounded-xl p-4 flex gap-4 group hover:border-slate-700 transition-colors animate-slide-up">
+                        <div key={item.id} className={`bg-slate-900/50 border ${item.isError ? 'border-red-900/50 bg-red-950/10' : 'border-slate-800'} rounded-xl p-4 flex gap-4 group hover:border-slate-700 transition-colors animate-slide-up`}>
                             {/* Image Thumbnail with Proxy */}
                             <div className="w-24 h-24 flex-shrink-0 bg-black rounded-lg overflow-hidden border border-slate-800 relative">
-                                {displayImg ? (
+                                {item.isError ? (
+                                    <div className="w-full h-full flex flex-col items-center justify-center text-red-500/50 text-[10px] gap-1 bg-red-950/20">
+                                        <AlertCircle className="w-6 h-6" />
+                                        Error
+                                    </div>
+                                ) : displayImg ? (
                                     <img 
                                         src={displayImg} 
                                         alt="" 
@@ -470,21 +520,37 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
                             
                             {/* Content */}
                             <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-white text-lg leading-tight mb-2 line-clamp-2">{item.title}</h3>
-                                <p className="text-slate-400 text-sm line-clamp-2 mb-3">{item.firstParagraph}</p>
+                                <h3 className={`font-bold ${item.isError ? 'text-red-400' : 'text-white'} text-lg leading-tight mb-2 line-clamp-2`}>
+                                    {item.title}
+                                </h3>
+                                <p className={`${item.isError ? 'text-red-300/60' : 'text-slate-400'} text-sm line-clamp-2 mb-3`}>
+                                    {item.firstParagraph}
+                                </p>
                                 <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline flex items-center gap-1">
                                     <ExternalLink className="w-3 h-3" /> {item.url}
                                 </a>
                             </div>
 
                             {/* Actions */}
-                            <button 
-                                onClick={() => removeArticle(item.id)}
-                                className="self-start p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                                title="Remove"
-                            >
-                                <Trash2 className="w-5 h-5" />
-                            </button>
+                            <div className="flex flex-col gap-2">
+                                {item.isError && (
+                                    <button 
+                                        onClick={() => handleRetryScrape(item)}
+                                        disabled={isLoading}
+                                        className="p-2 text-green-500 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-colors disabled:opacity-50"
+                                        title="Retry Scrape"
+                                    >
+                                        <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+                                    </button>
+                                )}
+                                <button 
+                                    onClick={() => removeArticle(item.id)}
+                                    className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                    title="Remove"
+                                >
+                                    <Trash2 className="w-5 h-5" />
+                                </button>
+                            </div>
                         </div>
                     )})}
                 </div>
