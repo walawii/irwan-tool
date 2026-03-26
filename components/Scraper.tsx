@@ -41,11 +41,12 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
 
         // List of proxies to try in order of reliability
         const proxies = [
-            (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
             (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+            (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
             (u: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
             (u: string) => `https://thingproxy.freeboard.io/fetch/${u}`,
             (u: string) => `https://corsproxy.org/?${encodeURIComponent(u)}`,
+            (u: string) => `https://yacdn.org/proxy/${u}`,
             (u: string) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`
         ];
 
@@ -67,10 +68,12 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
                     if (text && text.length > 250) {
                         const lowerText = text.toLowerCase();
                         const isErrorPage = 
-                            (lowerText.includes('403 forbidden') && lowerText.length < 1000) || 
-                            (lowerText.includes('access denied') && lowerText.length < 1000) ||
+                            (lowerText.includes('403 forbidden') && lowerText.length < 1500) || 
+                            (lowerText.includes('access denied') && lowerText.length < 1500) ||
+                            (lowerText.includes('cloudflare') && (lowerText.includes('error') || lowerText.includes('blocked'))) ||
                             lowerText.includes('captcha-delivery') ||
-                            lowerText.includes('ddos-protection');
+                            lowerText.includes('ddos-protection') ||
+                            lowerText.includes('security check');
                             
                         if (!isErrorPage) return text;
                     }
@@ -80,7 +83,7 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
             }
         }
 
-        throw new Error('Website is highly protected (Cloudflare/403). Try another source.');
+        throw new Error('Website is highly protected (Cloudflare/403). Try another source or retry.');
     };
 
   const resolveUrl = (baseUrl: string, relativeUrl: string): string => {
