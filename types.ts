@@ -116,4 +116,4 @@ export interface ScrapedArticle {
   errorMsg?: string;
 }
 
-export type ViewState = 'home' | 'editor' | 'scraper' | 'shorts' | 'frames' | 'overlay' | 'image-studio' | 'fb-scheduler' | 'video-splitter' | 'prompt-creator' | 'story-board' | 'image-to-video';
+export type ViewState = 'home' | 'editor' | 'scraper' | 'shorts' | 'frames' | 'overlay' | 'image-studio' | 'fb-scheduler' | 'video-splitter' | 'prompt-creator' | 'story-board' | 'image-to-video' | 'prompt-generator';

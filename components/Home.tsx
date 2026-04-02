@@ -44,6 +44,23 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
               Generate Video <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform" />
             </div>
           </button>
+
+          {/* Prompt Generator Card */}
+          <button 
+            onClick={() => onNavigate('prompt-generator')}
+            className="group relative bg-slate-900/50 border border-slate-700 hover:border-amber-400 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(251,191,36,0.15)] flex flex-col min-h-[16rem]"
+          >
+            <div className="bg-amber-400/10 w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-amber-400 transition-colors uppercase tracking-tight">Prompt Generator</h3>
+            <p className="text-slate-400 text-[10px] mb-6 leading-relaxed">
+              Generate detailed video generation prompts for Grok with product image analysis.
+            </p>
+            <div className="mt-auto flex items-center text-amber-400 text-[10px] font-semibold uppercase tracking-widest">
+              Open Generator <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </button>
           
           {/* Story Board Studio Card */}
           <button 
