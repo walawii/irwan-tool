@@ -53,7 +53,11 @@ const PromptCreator: React.FC<PromptCreatorProps> = ({ onBack }) => {
         setResultJson(null);
 
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+            if (!apiKey) {
+                throw new Error("API Key tidak ditemukan. Silakan periksa pengaturan API Key di menu Settings.");
+            }
+            const ai = new GoogleGenAI({ apiKey });
             const base64Data = await fileToBase64(videoFile);
 
             const response = await ai.models.generateContent({

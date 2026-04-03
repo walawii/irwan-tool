@@ -32,27 +32,32 @@ const PromptGenerator: React.FC<PromptGeneratorProps> = ({ onBack }) => {
 
     setIsGenerating(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+      if (!apiKey) {
+        throw new Error("API Key tidak ditemukan. Silakan periksa pengaturan API Key di menu Settings.");
+      }
+      const ai = new GoogleGenAI({ apiKey });
       const model = "gemini-3-flash-preview";
 
       const base64Data = image.split(',')[1];
       
       const prompt = `
-        Analyze this product image and the product name: "${productName}".
-        Generate a highly detailed, professional, and persuasive VIDEO GENERATION prompt in INDONESIAN LANGUAGE that will be used in Grok (X's AI).
-        The goal is to create a viral-style video advertisement for this product.
+        Analisis gambar produk ini dan nama produk: "${productName}".
+        Hasilkan prompt VIDEO GENERATION yang sangat mendetail, profesional, dan persuasif dalam BAHASA INDONESIA yang akan digunakan di Grok (AI milik X).
+        Tujuannya adalah untuk membuat iklan video gaya viral untuk produk ini.
         
-        The output should be a single, long, detailed prompt in INDONESIAN that I can copy and paste into Grok's video generation tool to get a perfect result.
+        Output harus berupa satu prompt panjang dan mendetail dalam BAHASA INDONESIA yang dapat saya salin dan tempel ke alat pembuat video Grok untuk mendapatkan hasil yang sempurna.
         
-        Requirements for the generated prompt:
-        1. It must describe a cinematic video scene featuring the product "${productName}".
-        2. It must specify camera movements (e.g., slow pan, zoom in, 360 rotation), lighting (e.g., cinematic, soft studio light), and environment based on the image.
-        3. It must use a persuasive and engaging tone in Indonesian.
-        4. It must describe the product's visual features accurately based on the image.
-        5. It must include a default Call to Action (CTA) in the video's text overlay or ending: "cek keranjang".
-        6. The prompt should ask Grok to generate a high-quality, high-converting video with a strong hook.
+        Persyaratan untuk prompt yang dihasilkan:
+        1. Harus mendeskripsikan adegan video sinematik yang menampilkan produk "${productName}".
+        2. Harus menentukan gerakan kamera (misalnya: slow pan, zoom in, rotasi 360 derajat, handheld cinematic), pencahayaan (misalnya: cinematic lighting, soft studio light, golden hour glow), dan lingkungan berdasarkan gambar.
+        3. Harus menggunakan nada yang persuasif dan menarik dalam Bahasa Indonesia.
+        4. Harus mendeskripsikan fitur visual produk secara akurat berdasarkan gambar.
+        5. Harus menyertakan Call to Action (CTA) default di overlay teks video atau di akhir video: "cek keranjang".
+        6. Prompt harus meminta Grok untuk menghasilkan video berkualitas tinggi (4K, photorealistic), konversi tinggi, dengan hook yang kuat di awal.
+        7. Tentukan aspek rasio 9:16 yang cocok untuk media sosial (TikTok/Reels/X).
         
-        Output ONLY the prompt text itself in INDONESIAN, ready to be used for video generation.
+        Berikan HANYA teks prompt itu sendiri dalam BAHASA INDONESIA, siap digunakan untuk pembuatan video.
       `;
 
       const response = await ai.models.generateContent({
