@@ -43,21 +43,21 @@ const PromptGenerator: React.FC<PromptGeneratorProps> = ({ onBack }) => {
       
       const prompt = `
         Analisis gambar produk ini dan nama produk: "${productName}".
-        Hasilkan prompt VIDEO GENERATION yang sangat mendetail, profesional, dan persuasif dalam BAHASA INDONESIA yang akan digunakan di Grok (AI milik X).
-        Tujuannya adalah untuk membuat iklan video gaya viral untuk produk ini.
+        Hasilkan DUA (2) prompt VIDEO GENERATION yang berbeda, masing-masing berdurasi 10 DETIK, dalam BAHASA INDONESIA yang akan digunakan di Grok (AI milik X).
+        Tujuannya adalah agar kedua adegan ini dapat digabungkan menjadi video iklan berdurasi total 20 detik yang viral.
         
-        Output harus berupa satu prompt panjang dan mendetail dalam BAHASA INDONESIA yang dapat saya salin dan tempel ke alat pembuat video Grok untuk mendapatkan hasil yang sempurna.
+        Output harus menyertakan "ADEGAN 1" dan "ADEGAN 2" dengan instruksi mendetail untuk masing-masing.
         
-        Persyaratan untuk prompt yang dihasilkan:
-        1. Harus mendeskripsikan adegan video sinematik yang menampilkan produk "${productName}".
-        2. Harus menentukan gerakan kamera (misalnya: slow pan, zoom in, rotasi 360 derajat, handheld cinematic), pencahayaan (misalnya: cinematic lighting, soft studio light, golden hour glow), dan lingkungan berdasarkan gambar.
-        3. Harus menggunakan nada yang persuasif dan menarik dalam Bahasa Indonesia.
-        4. Harus mendeskripsikan fitur visual produk secara akurat berdasarkan gambar.
-        5. Harus menyertakan Call to Action (CTA) default di overlay teks video atau di akhir video: "cek keranjang".
-        6. Prompt harus meminta Grok untuk menghasilkan video berkualitas tinggi (4K, photorealistic), konversi tinggi, dengan hook yang kuat di awal.
+        Persyaratan untuk setiap prompt adegan:
+        1. ADEGAN 1 (10 Detik): Fokus pada HOOK yang sangat kuat di 2 detik pertama. Tampilkan produk "${productName}" dengan MODEL MANUSIA yang memberikan reaksi "WOW" atau menunjukkan masalah yang diselesaikan produk.
+        2. ADEGAN 2 (10 Detik): Fokus pada DETAIL PRODUK dan REVIEW singkat. Tampilkan model sedang menggunakan produk atau menunjuk fitur unggulan, diakhiri dengan Call to Action (CTA) "cek keranjang".
+        3. Tentukan gerakan kamera (misalnya: slow pan, zoom in, rotasi 360 derajat, handheld cinematic), pencahayaan (misalnya: cinematic lighting, soft studio light, golden hour glow), dan lingkungan berdasarkan gambar.
+        4. Gunakan nada yang persuasif dan menarik dalam Bahasa Indonesia.
+        5. Sertakan narasi monolog (script) singkat untuk masing-masing adegan yang padat dan persuasif.
+        6. Minta Grok untuk menghasilkan video berkualitas tinggi (4K, photorealistic), konversi tinggi.
         7. Tentukan aspek rasio 9:16 yang cocok untuk media sosial (TikTok/Reels/X).
         
-        Berikan HANYA teks prompt itu sendiri dalam BAHASA INDONESIA, siap digunakan untuk pembuatan video.
+        Berikan HANYA teks prompt untuk ADEGAN 1 dan ADEGAN 2 dalam BAHASA INDONESIA, dipisahkan dengan jelas agar mudah disalin.
       `;
 
       const response = await ai.models.generateContent({
@@ -239,7 +239,7 @@ const PromptGenerator: React.FC<PromptGeneratorProps> = ({ onBack }) => {
               </div>
               
               <p className="mt-4 text-[10px] text-slate-500 uppercase font-bold tracking-widest text-center">
-                Optimized for Grok Video Generation • Includes "cek keranjang" CTA
+                Optimized for 2 Scenes (20s Total) • Includes Model, Narration & "cek keranjang" CTA
               </p>
             </div>
           </div>
