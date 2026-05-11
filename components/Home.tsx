@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Clapperboard, FileSpreadsheet, ArrowRight, Youtube, LayoutTemplate, Layers, ImageIcon, Facebook, Scissors, Sparkles, Film } from 'lucide-react';
+import { Clapperboard, FileSpreadsheet, ArrowRight, Youtube, LayoutTemplate, Layers, ImageIcon, Facebook, Scissors, Sparkles, Film, Hash } from 'lucide-react';
 import { ViewState } from '../types';
 
 interface HomeProps {
@@ -42,6 +42,23 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             </p>
             <div className="mt-auto flex items-center text-teal-400 text-[10px] font-semibold uppercase tracking-widest">
               Generate Video <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </button>
+
+          {/* Auto Caption & Tagar Card */}
+          <button 
+            onClick={() => onNavigate('caption-generator')}
+            className="group relative bg-slate-900/50 border border-slate-700 hover:border-emerald-400 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(52,211,153,0.15)] flex flex-col min-h-[16rem]"
+          >
+            <div className="bg-emerald-400/10 w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <Hash className="w-5 h-5 text-emerald-400" />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-emerald-400 transition-colors uppercase tracking-tight">Caption & Tagar</h3>
+            <p className="text-slate-400 text-[10px] mb-6 leading-relaxed">
+              Generate viral captions and trending hashtags based on your product image.
+            </p>
+            <div className="mt-auto flex items-center text-emerald-400 text-[10px] font-semibold uppercase tracking-widest">
+              Generate <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform" />
             </div>
           </button>
 

@@ -13,6 +13,7 @@ import PromptCreator from './components/PromptCreator';
 import StoryBoardStudio from './components/StoryBoardStudio';
 import ImageToVideo from './components/ImageToVideo';
 import PromptGenerator from './components/PromptGenerator';
+import CaptionGenerator from './components/CaptionGenerator';
 import { ViewState } from './types';
 
 const App: React.FC = () => {
@@ -70,6 +71,10 @@ const App: React.FC = () => {
 
       {currentView === 'prompt-generator' && (
         <PromptGenerator onBack={() => setCurrentView('home')} />
+      )}
+
+      {currentView === 'caption-generator' && (
+        <CaptionGenerator onBack={() => setCurrentView('home')} />
       )}
     </>
   );
