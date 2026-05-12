@@ -114,6 +114,7 @@ export interface ScrapedArticle {
   imageUrl: string;
   isError?: boolean;
   errorMsg?: string;
+  isAiImproved?: boolean;
 }
 
 export type ViewState = 'home' | 'editor' | 'scraper' | 'shorts' | 'frames' | 'overlay' | 'image-studio' | 'fb-scheduler' | 'video-splitter' | 'prompt-creator' | 'story-board' | 'image-to-video' | 'prompt-generator' | 'caption-generator';

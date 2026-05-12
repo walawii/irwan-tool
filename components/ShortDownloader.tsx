@@ -15,14 +15,23 @@ interface ShortDownloaderProps {
   onBack: () => void;
 }
 
-// Daftar instansi Cobalt yang diperbarui dan lebih stabil (Mix of official and community instances)
+// Daftar instansi Cobalt yang diperbarui dan lebih stabil
 const COBALT_INSTANCES = [
     'https://api.cobalt.tools/api/json',
     'https://cobalt.api.ryuko.space/api/json',
+    'https://api.server.cobalt.tools/api/json',
     'https://cobalt-api.kwiateusz.pl/api/json',
     'https://tools.betweenthelines.org/api/json',
-    'https://api.server.cobalt.tools/api/json',
-    'https://cobalt.154.53.53.53.nip.io/api/json'
+    'https://cobalt.154.53.53.53.nip.io/api/json',
+    'https://api.cobalt.crush.sh/api/json',
+    'https://cobalt.q-9.workers.dev/api/json',
+    'https://api.cobalt.run/api/json'
+];
+
+const PROXIES = [
+    (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+    (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    (u: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`
 ];
 
 const ShortDownloader: React.FC<ShortDownloaderProps> = ({ onBack }) => {
@@ -81,74 +90,84 @@ const ShortDownloader: React.FC<ShortDownloaderProps> = ({ onBack }) => {
   const downloadFileInternal = async (video: YouTubeVideo): Promise<boolean> => {
     setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'processing', error: undefined } : v));
 
-    // Updated request body to match standard Cobalt API v7/v10
+    // Request body for Cobalt v10 (latest)
     const requestBody = {
         url: video.url,
-        vQuality: '720', // Changed from videoQuality to vQuality
+        vQuality: '720',
         vCodec: 'h264',
         filenamePattern: 'classic',
         isAudioOnly: false,
-        disableMetadata: true
+        disableMetadata: true,
+        twitterGif: true
     };
 
-    // Mencoba beberapa instansi API dan beberapa proxy
+    // Mencoba beberapa instansi API
     for (const apiUrl of COBALT_INSTANCES) {
         try {
-            // Kita coba fetch langsung dulu, beberapa instansi mengizinkan CORS
-            let response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(requestBody)
-            }).catch(() => null);
-
-            // Jika gagal langsung, coba pakai corsproxy.io
-            if (!response || !response.ok) {
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`;
-                response = await fetch(proxyUrl, {
+            // Kita coba beberapa cara akses: Direct, lalu melalui berbagai proxy
+            const accessMethods = [
+                async () => await fetch(apiUrl, {
                     method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
                     body: JSON.stringify(requestBody)
-                }).catch(() => null);
-            }
+                }),
+                ...PROXIES.map(proxy => async () => await fetch(proxy(apiUrl), {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                }))
+            ];
 
-            if (response && response.ok) {
-                const data = await response.json();
-                
-                // Handle different response structures (v7 vs v10)
-                // v7: status: 'stream' | 'redirect', url: '...'
-                // v10: status: 'tunnel' | 'redirect', url: '...'
-                if (['stream', 'redirect', 'tunnel'].includes(data.status) || data.url) {
-                    const directUrl = data.url;
+            for (const method of accessMethods) {
+                try {
+                    const response = await method().catch(() => null);
                     
-                    if (directUrl) {
-                        // Simpan URL unduhan agar bisa diakses jika download otomatis gagal
-                        setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'done', downloadUrl: directUrl } : v));
-
-                        // Memicu pengunduhan browser
-                        const link = document.createElement('a');
-                        link.href = directUrl;
-                        link.setAttribute('download', `shorts-${video.id}.mp4`);
-                        link.target = '_blank';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
+                    if (response && response.ok) {
+                        const data = await response.json();
                         
-                        return true; 
+                        // Validasi response: v7/v10 formats
+                        if (['stream', 'redirect', 'tunnel', 'picker'].includes(data.status) || data.url) {
+                            let directUrl = data.url;
+                            
+                            // Jika 'picker', ambil yang video pertama
+                            if (data.status === 'picker' && data.picker && data.picker.length > 0) {
+                                directUrl = data.picker[0].url;
+                            }
+
+                            if (directUrl) {
+                                setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'done', downloadUrl: directUrl } : v));
+
+                                // Memicu pengunduhan browser
+                                const link = document.createElement('a');
+                                link.href = directUrl;
+                                // Gunakan download attribute jika memungkinkan, tapi target blank lebih aman untuk CORS
+                                link.setAttribute('download', `shorts-${video.id}.mp4`);
+                                link.target = '_blank';
+                                link.rel = 'noreferrer';
+                                document.body.appendChild(link);
+                                link.click();
+                                setTimeout(() => document.body.removeChild(link), 100);
+                                
+                                return true; 
+                            }
+                        }
+                        
+                        // Jika ada error spesifik dari Cobalt (misal: rate limit, unsupported)
+                        if (data.status === 'error' && data.text) {
+                            console.warn(`Cobalt Error (${apiUrl}): ${data.text}`);
+                            // Lanjut ke metode/instansi berikutnya
+                        }
                     }
+                } catch (e) {
+                    // Method gagal, coba method berikutnya dalam instansi yang sama
                 }
             }
         } catch (err: any) {
-            console.warn(`Instansi ${apiUrl} gagal atau diblokir CORS:`, err.message);
+            console.warn(`Instansi ${apiUrl} gagal total.`);
         }
     }
 
-    setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'error', error: 'Gagal mengambil video. Silakan gunakan tombol Manual.' } : v));
+    setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'error', error: 'Server sibuk atau link tidak didukung. Coba tombol Manual.' } : v));
     return false;
   };
 
