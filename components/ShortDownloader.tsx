@@ -101,69 +101,87 @@ const ShortDownloader: React.FC<ShortDownloaderProps> = ({ onBack }) => {
         twitterGif: true
     };
 
-    // Mencoba beberapa instansi API
-    for (const apiUrl of COBALT_INSTANCES) {
+    // Helper function to try an instance with multiple methods racing
+    const tryInstance = async (apiUrl: string) => {
+        const methods = [
+            // Direct
+            () => fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            }),
+            // Top Proxy
+            () => fetch(PROXIES[0](apiUrl), {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            })
+        ];
+
+        // Race the first two methods (direct and first proxy)
+        // This usually covers 90% of cases much faster
         try {
-            // Kita coba beberapa cara akses: Direct, lalu melalui berbagai proxy
-            const accessMethods = [
-                async () => await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestBody)
-                }),
-                ...PROXIES.map(proxy => async () => await fetch(proxy(apiUrl), {
-                    method: 'POST',
-                    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestBody)
-                }))
-            ];
+            const response = await Promise.race(methods.map(m => m().catch(err => {
+                // Return a fake failing response to not break the race if one fails early
+                return { ok: false } as Response;
+            })));
 
-            for (const method of accessMethods) {
-                try {
-                    const response = await method().catch(() => null);
-                    
-                    if (response && response.ok) {
-                        const data = await response.json();
-                        
-                        // Validasi response: v7/v10 formats
-                        if (['stream', 'redirect', 'tunnel', 'picker'].includes(data.status) || data.url) {
-                            let directUrl = data.url;
-                            
-                            // Jika 'picker', ambil yang video pertama
-                            if (data.status === 'picker' && data.picker && data.picker.length > 0) {
-                                directUrl = data.picker[0].url;
-                            }
-
-                            if (directUrl) {
-                                setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'done', downloadUrl: directUrl } : v));
-
-                                // Memicu pengunduhan browser
-                                const link = document.createElement('a');
-                                link.href = directUrl;
-                                // Gunakan download attribute jika memungkinkan, tapi target blank lebih aman untuk CORS
-                                link.setAttribute('download', `shorts-${video.id}.mp4`);
-                                link.target = '_blank';
-                                link.rel = 'noreferrer';
-                                document.body.appendChild(link);
-                                link.click();
-                                setTimeout(() => document.body.removeChild(link), 100);
-                                
-                                return true; 
-                            }
-                        }
-                        
-                        // Jika ada error spesifik dari Cobalt (misal: rate limit, unsupported)
-                        if (data.status === 'error' && data.text) {
-                            console.warn(`Cobalt Error (${apiUrl}): ${data.text}`);
-                            // Lanjut ke metode/instansi berikutnya
-                        }
+            if (response && response.ok) {
+                const data = await response.json();
+                if (['stream', 'redirect', 'tunnel', 'picker'].includes(data.status) || data.url) {
+                    let directUrl = data.url;
+                    if (data.status === 'picker' && data.picker && data.picker.length > 0) {
+                        directUrl = data.picker[0].url;
                     }
-                } catch (e) {
-                    // Method gagal, coba method berikutnya dalam instansi yang sama
+                    return directUrl;
                 }
             }
-        } catch (err: any) {
-            console.warn(`Instansi ${apiUrl} gagal total.`);
+        } catch (e) {
+            return null;
+        }
+        return null;
+    };
+
+    // Parallel attempt to the first 3 instances for maximum speed
+    const initialInstances = COBALT_INSTANCES.slice(0, 3);
+    try {
+        const result = await Promise.any(initialInstances.map(url => 
+            tryInstance(url).then(res => {
+                if (res) return res;
+                throw new Error('fail');
+            })
+        ));
+
+        if (result) {
+            setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'done', downloadUrl: result } : v));
+
+            const link = document.createElement('a');
+            link.href = result;
+            link.setAttribute('download', `shorts-${video.id}.mp4`);
+            link.target = '_blank';
+            link.rel = 'noreferrer';
+            document.body.appendChild(link);
+            link.click();
+            setTimeout(() => document.body.removeChild(link), 100);
+            return true;
+        }
+    } catch (e) {
+        // If initial race fails, fall back to sequential check for ALL remaining instances
+        // to ensure reliability if everything is slow/blocked
+        for (const apiUrl of COBALT_INSTANCES) {
+            const result = await tryInstance(apiUrl);
+            if (result) {
+                setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'done', downloadUrl: result } : v));
+                const link = document.createElement('a');
+                link.href = result;
+                link.setAttribute('download', `shorts-${video.id}.mp4`);
+                link.target = '_blank';
+                link.rel = 'noreferrer';
+                document.body.appendChild(link);
+                link.click();
+                setTimeout(() => document.body.removeChild(link), 100);
+                return true;
+            }
         }
     }
 
@@ -182,11 +200,23 @@ const ShortDownloader: React.FC<ShortDownloaderProps> = ({ onBack }) => {
 
       setIsBatchRunning(true);
       
-      for (const video of toProcess) {
-          await downloadFileInternal(video);
-          // Jeda agar tidak dianggap bot oleh server API
-          await new Promise(r => setTimeout(r, 2500));
-      }
+      // Use parallel processing for batch download with concurrency 2
+      const concurrency = 2;
+      const queue = [...toProcess];
+      
+      const processor = async () => {
+          while (queue.length > 0) {
+              const video = queue.shift();
+              if (video) {
+                  await downloadFileInternal(video);
+                  // Smaller delay between requests in the same "worker"
+                  await new Promise(r => setTimeout(r, 1000));
+              }
+          }
+      };
+
+      const workers = Array.from({ length: Math.min(concurrency, toProcess.length) }, () => processor());
+      await Promise.all(workers);
       
       setIsBatchRunning(false);
   };
