@@ -32,6 +32,7 @@ const CaptionGenerator: React.FC<CaptionGeneratorProps> = ({ onBack }) => {
     if (!productName || !image) return;
 
     setIsGenerating(true);
+    setResult(null); // Reset previous result
     try {
       const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
       if (!apiKey) {
@@ -39,6 +40,7 @@ const CaptionGenerator: React.FC<CaptionGeneratorProps> = ({ onBack }) => {
       }
       const ai = new GoogleGenAI({ apiKey });
       
+      const mimeType = image.split(';')[0].split(':')[1] || 'image/jpeg';
       const base64Data = image.split(',')[1];
       
       const prompt = `
@@ -46,9 +48,9 @@ const CaptionGenerator: React.FC<CaptionGeneratorProps> = ({ onBack }) => {
         Hasilkan:
         1. Caption media sosial yang menarik (copywriting) dalam Bahasa Indonesia.
         2. 5-10 tagar yang relevan dan sedang tren dalam Bahasa Indonesia.
-        3. Narasi Voice Over (naskah) yang persuasif dan natural untuk video promosi pendek dengan durasi TEPAT 15 detik dalam Bahasa Indonesia.
+        3. Narasi Voice Over (naskah) yang persuasif dan natural untuk video promosi pendek dengan durasi MAKSIMAL 15 DETIK (sekitar 30-40 kata) dalam Bahasa Indonesia.
         
-        Kembalikan hasil dalam format JSON dengan struktur:
+        WAJIB kembalikan hasil dalam format JSON VALID tanpa teks tambahan dengan struktur:
         {
           "caption": "teks caption di sini",
           "hashtags": ["tagar1", "tagar2", ...],
@@ -63,7 +65,7 @@ const CaptionGenerator: React.FC<CaptionGeneratorProps> = ({ onBack }) => {
             role: "user",
             parts: [
               { text: prompt },
-              { inlineData: { data: base64Data, mimeType: "image/jpeg" } }
+              { inlineData: { data: base64Data, mimeType: mimeType } }
             ]
           }
         ],
@@ -86,11 +88,19 @@ const CaptionGenerator: React.FC<CaptionGeneratorProps> = ({ onBack }) => {
 
       const text = response.text;
       if (!text) throw new Error("Tidak ada respon dari AI");
-      const parsed = JSON.parse(text);
+      
+      // Clean potential markdown blocks
+      const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
+      
+      if (!parsed.caption || !parsed.hashtags) {
+          throw new Error("Format data yang diterima tidak lengkap.");
+      }
+      
       setResult(parsed);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating caption:", error);
-      alert("Gagal menghasilkan caption. Silakan coba lagi.");
+      alert(`Gagal: ${error.message || "Silakan coba lagi."}`);
     } finally {
       setIsGenerating(false);
     }

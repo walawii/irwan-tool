@@ -31,6 +31,7 @@ const PromptGenerator: React.FC<PromptGeneratorProps> = ({ onBack }) => {
     if (!productName || !image) return;
 
     setIsGenerating(true);
+    setGeneratedPrompt('');
     try {
       const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
       if (!apiKey) {
@@ -39,6 +40,7 @@ const PromptGenerator: React.FC<PromptGeneratorProps> = ({ onBack }) => {
       const ai = new GoogleGenAI({ apiKey });
       const model = "gemini-3-flash-preview";
 
+      const mimeType = image.split(';')[0].split(':')[1] || 'image/jpeg';
       const base64Data = image.split(',')[1];
       
       const prompt = `
@@ -66,16 +68,17 @@ const PromptGenerator: React.FC<PromptGeneratorProps> = ({ onBack }) => {
           {
             parts: [
               { text: prompt },
-              { inlineData: { data: base64Data, mimeType: "image/jpeg" } }
+              { inlineData: { data: base64Data, mimeType: mimeType } }
             ]
           }
         ]
       });
 
-      setGeneratedPrompt(response.text || 'Failed to generate prompt.');
-    } catch (error) {
+      const text = response.text || 'Failed to generate prompt.';
+      setGeneratedPrompt(text);
+    } catch (error: any) {
       console.error("Error generating prompt:", error);
-      setGeneratedPrompt("Error: " + (error instanceof Error ? error.message : "Unknown error"));
+      setGeneratedPrompt("Error: " + (error.message || "Unknown error"));
     } finally {
       setIsGenerating(false);
     }

@@ -104,12 +104,13 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
               contents: [{
                   role: "user",
                   parts: [{
-                      text: `Extract news/article data from this HTML. Focus on the main article.
+                      text: `Extract news/article data from this HTML. Focus on the main article content.
                       Return JSON with: title, firstParagraph, imageUrl.
-                      Translate to Indonesian if text is in English.
+                      Translate the extracted text into Indonesian (Bahasa Indonesia) accurately.
+                      Ensure the imageUrl is a valid full URL if found.
                       
                       URL: ${url}
-                      HTML:
+                      HTML Content:
                       ${truncatedHtml}`
                   }]
               }],
@@ -127,8 +128,11 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
               }
           });
 
-          const JSONText = response.text || '{}';
-          const cleanJSON = JSONText.replace(/```json/g, '').replace(/```/g, '').trim();
+          const text = response.text;
+          if (!text) return null;
+          
+          // Clean potential markdown blocks
+          const cleanJSON = text.replace(/```json/g, '').replace(/```/g, '').trim();
           const result = JSON.parse(cleanJSON);
           
           if (result.title) {

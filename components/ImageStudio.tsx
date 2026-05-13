@@ -128,17 +128,27 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
         if (!prompt.trim()) return;
         setIsGenerating(true);
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+            if (!apiKey) {
+                throw new Error("API Key tidak ditemukan. Silakan periksa pengaturan API Key di menu Settings.");
+            }
+            const ai = new GoogleGenAI({ apiKey });
             let contents: any;
             if (activeItem.baseImage) {
                 const response = await fetch(activeItem.baseImage);
                 const blob = await response.blob();
+                const mimeType = blob.type || 'image/jpeg';
                 const base64 = await new Promise<string>((r) => {
                     const reader = new FileReader();
                     reader.onloadend = () => r((reader.result as string).split(',')[1]);
                     reader.readAsDataURL(blob);
                 });
-                contents = { parts: [{ inlineData: { data: base64, mimeType: blob.type } }, { text: prompt }] };
+                contents = { 
+                    parts: [
+                        { inlineData: { data: base64, mimeType: mimeType } }, 
+                        { text: prompt }
+                    ] 
+                };
             } else {
                 contents = { parts: [{ text: prompt }] };
             }
@@ -149,14 +159,18 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
                 config: { imageConfig: { aspectRatio } }
             });
 
-            for (const part of result.candidates[0].content.parts) {
-                if (part.inlineData) {
-                    updateActiveItem({ baseImage: `data:image/png;base64,${part.inlineData.data}` });
-                    break;
+            if (result.candidates && result.candidates[0]?.content?.parts) {
+                for (const part of result.candidates[0].content.parts) {
+                    if (part.inlineData) {
+                        updateActiveItem({ baseImage: `data:image/png;base64,${part.inlineData.data}` });
+                        return;
+                    }
                 }
             }
-        } catch (error) {
-            alert("Gagal menghasilkan gambar AI.");
+            throw new Error("AI tidak menghasilkan gambar. Silakan coba prompt lain.");
+        } catch (error: any) {
+            console.error("AI Image error:", error);
+            alert(`Gagal: ${error.message || "Silakan coba lagi."}`);
         } finally {
             setIsGenerating(false);
         }

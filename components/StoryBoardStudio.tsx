@@ -73,11 +73,22 @@ const StoryBoardStudio: React.FC<StoryBoardStudioProps> = ({ onBack }) => {
         setScenes([]);
 
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+            if (!apiKey) {
+                throw new Error("API Key tidak ditemukan. Silakan periksa pengaturan API Key di menu Settings.");
+            }
+            const ai = new GoogleGenAI({ apiKey });
             
             const imageParts = await Promise.all(characterImages.map(async (url) => {
-                const base64 = await getBase64(url);
-                return { inlineData: { data: base64, mimeType: 'image/png' } };
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const mimeType = blob.type || 'image/png';
+                const base64 = await new Promise<string>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+                    reader.readAsDataURL(blob);
+                });
+                return { inlineData: { data: base64, mimeType: mimeType } };
             }));
 
             const textPart = { text: `Create a professional storyboard for a vertical 9:16 video. 
@@ -95,7 +106,12 @@ const StoryBoardStudio: React.FC<StoryBoardStudioProps> = ({ onBack }) => {
 
             const response = await ai.models.generateContent({
                 model: 'gemini-3-flash-preview',
-                contents: { parts: [...imageParts, textPart] },
+                contents: [
+                    {
+                        role: "user",
+                        parts: [...imageParts, textPart]
+                    }
+                ],
                 config: {
                     responseMimeType: "application/json",
                     responseSchema: {
@@ -113,7 +129,13 @@ const StoryBoardStudio: React.FC<StoryBoardStudioProps> = ({ onBack }) => {
                 }
             });
 
-            const data = JSON.parse(response.text || '[]');
+            const text = response.text;
+            if (!text) throw new Error("Tidak ada respon dari AI");
+            
+            // Clean potential markdown blocks
+            const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+            const data = JSON.parse(cleanJson || '[]');
+            
             const parsedScenes = data.map((s: any, idx: number) => ({
                 id: Math.random().toString(36).substr(2, 9),
                 number: idx + 1,

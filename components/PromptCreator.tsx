@@ -73,70 +73,73 @@ const PromptCreator: React.FC<PromptCreatorProps> = ({ onBack }) => {
 
             const response = await ai.models.generateContent({
                 model: 'gemini-3-flash-preview',
-                contents: {
-                    parts: [
-                        { inlineData: { data: base64Data, mimeType: videoFile.type } },
-                        { text: `Analisis konten visual video ini secara mendalam. Saya ingin membuat ulang video serupa menggunakan AI seperti Google Veo atau Flow.
-                        ${productName ? `Produk yang ada dalam video ini adalah: "${productName}". Pastikan nama produk ini disertakan atau menjadi referensi utama dalam prompt dan narasi.` : ''}
-                        
-                        Hasilkan DUA (2) prompt video terpisah (ADEGAN 1 dan ADEGAN 2), masing-masing untuk durasi 8 DETIK.
-                        Seluruh output, termasuk PROMPT VISUAL dan NARASI, harus dalam BAHASA INDONESIA agar hasil videonya memiliki konteks dan teks Indonesia yang kuat.
-                        
-                        Gunakan panduan Master Prompt berikut untuk narasi: "${MASTER_PROMPT_FLOW}"
-                        
-                        Tambahkan juga:
-                        1. AUTO CAPTION: Caption media sosial yang menarik (copywriting) dalam Bahasa Indonesia.
-                        2. 5 HASHTAGS: 5 tagar yang sedang tren dan sangat relevan dengan isi video.
-                        
-                        Ekstrak elemen kunci:
-                        1. Subjek utama dan aksinya.
-                        2. Gerakan kamera (pan, tilt, zoom, static, handheld, cinematic, dll).
-                        3. Pencahayaan (natural, studio, cinematic, moody, dll).
-                        4. Lingkungan/latar belakang.
-                        5. Kualitas teknis (4k, photorealistic, dll).
-                        
-                        Kembalikan dalam format JSON sesuai skema yang ditentukan.` }
-                    ]
-                },
+                contents: [
+                    {
+                        role: "user",
+                        parts: [
+                            { inlineData: { data: base64Data, mimeType: videoFile.type } },
+                            { text: `Analisis konten visual video ini secara mendalam. Saya ingin membuat ulang video serupa menggunakan AI seperti Google Veo atau Flow.
+                            ${productName ? `Produk yang ada dalam video ini adalah: "${productName}". Pastikan nama produk ini disertakan atau menjadi referensi utama dalam prompt dan narasi.` : ''}
+                            
+                            Hasilkan DUA (2) prompt video terpisah (ADEGAN 1 dan ADEGAN 2), masing-masing untuk durasi 8 DETIK.
+                            Seluruh output, termasuk PROMPT VISUAL dan NARASI, harus dalam BAHASA INDONESIA agar hasil videonya memiliki konteks dan teks Indonesia yang kuat.
+                            
+                            Gunakan panduan Master Prompt berikut untuk narasi: "${MASTER_PROMPT_FLOW}"
+                            
+                            Tambahkan juga:
+                            1. AUTO CAPTION: Caption media sosial yang menarik (copywriting) dalam Bahasa Indonesia.
+                            2. 5 HASHTAGS: 5 tagar yang sedang tren dan sangat relevan dengan isi video.
+                            
+                            Ekstrak elemen kunci:
+                            1. Subjek utama dan aksinya.
+                            2. Gerakan kamera (pan, tilt, zoom, static, handheld, cinematic, dll).
+                            3. Pencahayaan (natural, studio, cinematic, moody, dll).
+                            4. Lingkungan/latar belakang.
+                            5. Kualitas teknis (4k, photorealistic, dll).
+                            
+                            Kembalikan DALAM FORMAT JSON VALID sesuai skema yang ditentukan tanpa teks tambahan.` }
+                        ]
+                    }
+                ],
                 config: {
                     responseMimeType: 'application/json',
                     responseSchema: {
                         type: Type.OBJECT,
                         properties: {
-                            master_prompt_flow: { type: Type.STRING, description: "Master prompt untuk alat Flow" },
-                            auto_caption: { type: Type.STRING, description: "Caption media sosial dalam Bahasa Indonesia" },
+                            master_prompt_flow: { type: Type.STRING },
+                            auto_caption: { type: Type.STRING },
                             hashtags: { 
                                 type: Type.ARRAY, 
-                                items: { type: Type.STRING },
-                                description: "5 tagar yang tren dan relevan"
+                                items: { type: Type.STRING }
                             },
                             adegan_1: {
                                 type: Type.OBJECT,
-                                description: "Detail untuk Adegan 1 (8 Detik)",
                                 properties: {
-                                    visual_prompt: { type: Type.STRING, description: "Prompt visual lengkap dalam Bahasa Indonesia untuk AI video generation" },
-                                    narasi_indonesia: { type: Type.STRING, description: "Skrip narasi dalam Bahasa Indonesia" }
+                                    visual_prompt: { type: Type.STRING },
+                                    narasi_indonesia: { type: Type.STRING }
                                 },
                                 required: ["visual_prompt", "narasi_indonesia"]
                             },
                             adegan_2: {
                                 type: Type.OBJECT,
-                                description: "Detail untuk Adegan 2 (8 Detik)",
                                 properties: {
-                                    visual_prompt: { type: Type.STRING, description: "Prompt visual lengkap dalam Bahasa Indonesia untuk AI video generation" },
-                                    narasi_indonesia: { type: Type.STRING, description: "Skrip narasi dalam Bahasa Indonesia" }
+                                    visual_prompt: { type: Type.STRING },
+                                    narasi_indonesia: { type: Type.STRING }
                                 },
                                 required: ["visual_prompt", "narasi_indonesia"]
                             },
-                            negative_prompt: { type: Type.STRING, description: "Hal yang harus dihindari dalam video" }
+                            negative_prompt: { type: Type.STRING }
                         },
                         required: ["adegan_1", "adegan_2", "master_prompt_flow", "auto_caption", "hashtags"]
                     }
                 }
             });
 
-            if (response.text) {
-                setResultJson(response.text);
+            const text = response.text;
+            if (text) {
+                // Clean potential markdown blocks
+                const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                setResultJson(cleanJson);
             } else {
                 setError("Gagal menghasilkan prompt. Silakan coba lagi.");
             }
