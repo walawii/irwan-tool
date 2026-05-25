@@ -28,25 +28,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full mx-auto">
           
-           {/* Auto Clip Creator Premium Card */}
-          <button 
-            onClick={() => onNavigate('auto-clip')}
-            className="group relative bg-slate-900/50 border border-slate-700 hover:border-red-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(239,68,68,0.25)] flex flex-col min-h-[16rem]"
-          >
-            <div className="absolute top-2 right-2 text-[8px] font-mono text-red-400 border border-red-500/20 bg-red-500/5 px-1.5 py-0.5 rounded-md uppercase font-bold tracking-widest">
-              New
-            </div>
-            <div className="bg-red-500/10 w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <Youtube className="w-5 h-5 text-red-500" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-red-500 transition-colors uppercase tracking-tight">Auto-Clip (9:16)</h3>
-            <p className="text-slate-400 text-[10px] mb-6 leading-relaxed">
-              Generate 9:16 vertical clips from any YouTube URL and discover why they will go viral instantly with Gemini AI.
-            </p>
-            <div className="mt-auto flex items-center text-red-500 text-[10px] font-semibold uppercase tracking-widest">
-              Open Studio <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </button>
+
 
            {/* Image to Video Card */}
           <button 
@@ -99,24 +81,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             </div>
           </button>
           
-          {/* Story Board Studio Card */}
-          <button 
-            onClick={() => onNavigate('story-board')}
-            className="group relative bg-slate-900/50 border border-slate-700 hover:border-cyan-400 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(34,211,238,0.15)] flex flex-col min-h-[16rem]"
-          >
-            <div className="bg-cyan-400/10 w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <Film className="w-5 h-5 text-cyan-400" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors uppercase tracking-tight">Story Board</h3>
-            <p className="text-slate-400 text-[10px] mb-6 leading-relaxed">
-              Create consistent narratives with AI characters and scene breakdown.
-            </p>
-            <div className="mt-auto flex items-center text-cyan-400 text-[10px] font-semibold uppercase tracking-widest">
-              Open Studio <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </button>
 
-          {/* Prompt Creator Card */}
           <button 
             onClick={() => onNavigate('prompt-creator')}
             className="group relative bg-slate-900/50 border border-slate-700 hover:border-amber-400 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(251,191,36,0.15)] flex flex-col min-h-[16rem]"
@@ -167,24 +132,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             </div>
           </button>
 
-          {/* Facebook Scheduler Card */}
-          <button 
-            onClick={() => onNavigate('fb-scheduler')}
-            className="group relative bg-slate-900/50 border border-slate-700 hover:border-[#1877F2] rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(24,119,242,0.15)] flex flex-col min-h-[16rem]"
-          >
-            <div className="bg-blue-600/10 w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <Facebook className="w-5 h-5 text-[#1877F2]" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-[#1877F2] transition-colors uppercase tracking-tight">Reels Scheduler</h3>
-            <p className="text-slate-400 text-[10px] mb-6 leading-relaxed">
-              Upload and schedule Facebook Reels directly to your Pages.
-            </p>
-            <div className="mt-auto flex items-center text-[#1877F2] text-[10px] font-semibold uppercase tracking-widest">
-              Schedule <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </button>
 
-          {/* Graphic Studio Card */}
           <button 
             onClick={() => onNavigate('image-studio')}
             className="group relative bg-slate-900/50 border border-slate-700 hover:border-indigo-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(99,102,241,0.15)] flex flex-col min-h-[16rem]"

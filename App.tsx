@@ -7,14 +7,11 @@ import ShortDownloader from './components/ShortDownloader';
 import FrameEditor from './components/FrameEditor';
 import VideoOverlayMaker from './components/VideoOverlayMaker';
 import ImageStudio from './components/ImageStudio';
-import FacebookScheduler from './components/FacebookScheduler';
 import VideoSplitter from './components/VideoSplitter';
 import PromptCreator from './components/PromptCreator';
-import StoryBoardStudio from './components/StoryBoardStudio';
 import ImageToVideo from './components/ImageToVideo';
 import PromptGenerator from './components/PromptGenerator';
 import CaptionGenerator from './components/CaptionGenerator';
-import AutoClipStudio from './components/AutoClipStudio';
 import { ViewState } from './types';
 
 const App: React.FC = () => {
@@ -50,20 +47,12 @@ const App: React.FC = () => {
         <ImageStudio onBack={() => setCurrentView('home')} />
       )}
 
-      {currentView === 'fb-scheduler' && (
-        <FacebookScheduler onBack={() => setCurrentView('home')} />
-      )}
-
       {currentView === 'video-splitter' && (
         <VideoSplitter onBack={() => setCurrentView('home')} />
       )}
 
       {currentView === 'prompt-creator' && (
         <PromptCreator onBack={() => setCurrentView('home')} />
-      )}
-
-      {currentView === 'story-board' && (
-        <StoryBoardStudio onBack={() => setCurrentView('home')} />
       )}
 
       {currentView === 'image-to-video' && (
@@ -76,10 +65,6 @@ const App: React.FC = () => {
 
       {currentView === 'caption-generator' && (
         <CaptionGenerator onBack={() => setCurrentView('home')} />
-      )}
-
-      {currentView === 'auto-clip' && (
-        <AutoClipStudio onBack={() => setCurrentView('home')} />
       )}
     </>
   );
