@@ -1,5 +1,6 @@
 {
   "name": "Irwan Kurnia",
-  "description": "Professional content creation suite: News video editor, Article scraper, Reels scheduler, and AI-powered Prompt Generator for Grok.",
-  "requestFramePermissions": []
+  "description": "Professional content creation suite: Auto-Clip Creator, News video editor, Article scraper, Reels scheduler, and AI-powered Caption & Prompt Gen.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

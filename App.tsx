@@ -14,6 +14,7 @@ import StoryBoardStudio from './components/StoryBoardStudio';
 import ImageToVideo from './components/ImageToVideo';
 import PromptGenerator from './components/PromptGenerator';
 import CaptionGenerator from './components/CaptionGenerator';
+import AutoClipStudio from './components/AutoClipStudio';
 import { ViewState } from './types';
 
 const App: React.FC = () => {
@@ -75,6 +76,10 @@ const App: React.FC = () => {
 
       {currentView === 'caption-generator' && (
         <CaptionGenerator onBack={() => setCurrentView('home')} />
+      )}
+
+      {currentView === 'auto-clip' && (
+        <AutoClipStudio onBack={() => setCurrentView('home')} />
       )}
     </>
   );
