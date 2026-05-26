@@ -7,6 +7,227 @@ interface VideoOverlayMakerProps {
     onBack: () => void;
 }
 
+// Dynamic generators for default background media options matching user-uploaded aesthetics
+const generateActionMoviePreset = (): string => {
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = 720;
+    tempCanvas.height = 1280;
+    const ctx = tempCanvas.getContext('2d')!;
+
+    // 1. Dark backdrop radial gradient
+    const grad = ctx.createRadialGradient(360, 640, 100, 360, 640, 720);
+    grad.addColorStop(0, '#0a0101');
+    grad.addColorStop(1, '#1b0103');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 720, 1280);
+
+    // 2. Concentric rings tunnel
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.08)';
+    ctx.lineWidth = 2;
+    for (let r = 80; r < 580; r += 32) {
+        ctx.beginPath();
+        ctx.arc(360, 640, r, 0, Math.PI * 2);
+        ctx.setLineDash([4, 12]);
+        ctx.stroke();
+    }
+    ctx.setLineDash([]); // Reset line dash
+
+    // 3. Curved red waves (swooshes) on sides - simulating action layout
+    // Left curve 1
+    ctx.fillStyle = '#991b1b';
+    ctx.beginPath();
+    ctx.moveTo(0, 150);
+    ctx.bezierCurveTo(240, 300, 340, 600, 0, 1100);
+    ctx.lineTo(0, 150);
+    ctx.closePath();
+    ctx.fill();
+
+    // Left curve 2 (brighter foreground swoosh)
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath();
+    ctx.moveTo(0, 200);
+    ctx.bezierCurveTo(180, 320, 260, 580, 0, 1000);
+    ctx.lineTo(0, 200);
+    ctx.closePath();
+    ctx.fill();
+
+    // Right curve 1
+    ctx.fillStyle = '#991b1b';
+    ctx.beginPath();
+    ctx.moveTo(720, 150);
+    ctx.bezierCurveTo(480, 300, 380, 600, 720, 1100);
+    ctx.lineTo(720, 150);
+    ctx.closePath();
+    ctx.fill();
+
+    // Right curve 2 (brighter)
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath();
+    ctx.moveTo(720, 200);
+    ctx.bezierCurveTo(540, 320, 460, 580, 720, 1000);
+    ctx.lineTo(720, 200);
+    ctx.closePath();
+    ctx.fill();
+
+    // 4. Dot Matrix Grid Pattern
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+    const drawDotGrid = (startX: number, startY: number, cols: number, rows: number) => {
+        for (let c = 0; c < cols; c++) {
+            for (let r = 0; r < rows; r++) {
+                ctx.beginPath();
+                ctx.arc(startX + c * 18, startY + r * 18, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    };
+    drawDotGrid(60, 120, 5, 4); // top-left
+    drawDotGrid(580, 260, 4, 6); // top-right
+    drawDotGrid(60, 940, 4, 6); // bottom-left
+    drawDotGrid(540, 1080, 5, 4); // bottom-right
+
+    // 5. Heavy display-oriented texts ("ACTION SCENE" & "DAILY ACTION MOVIE")
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+    ctx.shadowBlur = 12;
+    ctx.textAlign = 'center';
+    
+    // ACTION SCENE text (top portion of background)
+    ctx.fillStyle = '#febb30';
+    ctx.font = '900 68px "Montserrat", "Arial Black", sans-serif';
+    ctx.fillText('ACTION SCENE', 360, 220);
+
+    // DAILY ACTION MOVIE text (bottom portion of background)
+    ctx.fillStyle = '#ea580c';
+    ctx.font = '900 48px "Montserrat", "Arial Black", sans-serif';
+    ctx.fillText('DAILY ACTION MOVIE', 360, 1060);
+
+    ctx.shadowBlur = 0; // Reset shadow
+
+    return tempCanvas.toDataURL('image/png');
+};
+
+const generateComedyShowPreset = (): string => {
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = 720;
+    tempCanvas.height = 1280;
+    const ctx = tempCanvas.getContext('2d')!;
+
+    // 1. Vibrant retro stage background (gradient red/orange/yellow)
+    const grad = ctx.createRadialGradient(360, 640, 80, 360, 640, 800);
+    grad.addColorStop(0, '#fef08a'); // central stage light glow
+    grad.addColorStop(0.35, '#f97316'); // bright comedy orange
+    grad.addColorStop(0.7, '#dc2626'); // red contrast ring
+    grad.addColorStop(1, '#450a0a'); // dark framing borders
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 720, 1280);
+
+    // Spotlights
+    ctx.fillStyle = 'rgba(254, 240, 138, 0.12)';
+    ctx.beginPath();
+    ctx.moveTo(100, 0); ctx.lineTo(150, 1280); ctx.lineTo(350, 1280); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(620, 0); ctx.lineTo(570, 1280); ctx.lineTo(370, 1280); ctx.closePath(); ctx.fill();
+
+    // 2. Sparkles
+    ctx.fillStyle = 'rgba(254, 240, 138, 0.7)';
+    const drawStar = (cx: number, cy: number, spikes: number, outerRad: number, innerRad: number) => {
+        let rot = Math.PI / 2 * 3;
+        let x = cx;
+        let y = cy;
+        let step = Math.PI / spikes;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - outerRad);
+        for (let i = 0; i < spikes; i++) {
+            x = cx + Math.cos(rot) * outerRad;
+            y = cy + Math.sin(rot) * outerRad;
+            ctx.lineTo(x, y);
+            rot += step;
+            x = cx + Math.cos(rot) * innerRad;
+            y = cy + Math.sin(rot) * innerRad;
+            ctx.lineTo(x, y);
+            rot += step;
+        }
+        ctx.lineTo(cx, cy - outerRad);
+        ctx.closePath();
+        ctx.fill();
+    };
+    drawStar(100, 300, 4, 18, 7);
+    drawStar(600, 200, 4, 25, 10);
+    drawStar(90, 880, 4, 15, 6);
+    drawStar(630, 940, 4, 20, 8);
+
+    // 3. Comedy Mic Backdrop Illustration
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+    ctx.shadowBlur = 10;
+    
+    // Iconic Comic Spotlight outline box
+    ctx.strokeStyle = '#fee2e2';
+    ctx.lineWidth = 12;
+    ctx.strokeRect(100, 340, 520, 600);
+    // Draw golden inner line
+    ctx.strokeStyle = '#fef08a';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(106, 346, 508, 588);
+
+    // Microphone Stand
+    ctx.translate(360, 640);
+    // Mic Stand
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(-5, 40, 10, 140);
+    // Mic Joint
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(-12, 20, 24, 22);
+    // Mic body
+    ctx.beginPath();
+    ctx.moveTo(-16, -20);
+    ctx.lineTo(-8, 20);
+    ctx.lineTo(8, 20);
+    ctx.lineTo(16, -20);
+    ctx.closePath();
+    ctx.fill();
+    // Mic head
+    ctx.fillStyle = '#94a3b8';
+    ctx.beginPath();
+    ctx.arc(0, -32, 26, 0, Math.PI * 2);
+    ctx.fill();
+    // Grid
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(-26, -32); ctx.lineTo(26, -32);
+    ctx.moveTo(0, -58); ctx.lineTo(0, -6);
+    ctx.stroke();
+    ctx.restore();
+
+    // 4. Heavy Comic Title / Bottom Copy match
+    ctx.shadowColor = 'rgba(0,0,0,0.85)';
+    ctx.shadowBlur = 14;
+    ctx.textAlign = 'center';
+
+    // Top: TERTAWALAH using comic yellow palette
+    ctx.fillStyle = '#fef08a';
+    ctx.strokeStyle = '#450a0a';
+    ctx.lineWidth = 10;
+    ctx.font = '900 70px "Arial Black", "Montserrat", sans-serif';
+    ctx.strokeText('TERTAWALAH', 360, 200);
+    ctx.fillText('TERTAWALAH', 360, 200);
+
+    // Bottom: SEBELUM TERTAWA ITU DILARANG in italicized display layout
+    ctx.fillStyle = '#fef08a';
+    ctx.strokeStyle = '#450a0a';
+    ctx.lineWidth = 8;
+    ctx.font = 'bold italic 34px "Arial Black", "Montserrat", sans-serif';
+    ctx.strokeText('SEBELUM TERTAWA', 360, 1040);
+    ctx.fillText('SEBELUM TERTAWA', 360, 1040);
+
+    ctx.strokeText('ITU DILARANG', 360, 1090);
+    ctx.fillText('ITU DILARANG', 360, 1090);
+
+    ctx.shadowBlur = 0; // Reset
+
+    return tempCanvas.toDataURL('image/png');
+};
+
 const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
     const [items, setItems] = useState<OverlayItem[]>([{
         id: Math.random().toString(36).substr(2, 9),
@@ -81,6 +302,28 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
             setIsPlaying(false);
         }
         e.target.value = '';
+    };
+
+    const handleSelectPreset = (presetId: 'action-movie' | 'comedy-show') => {
+        const url = presetId === 'action-movie' ? generateActionMoviePreset() : generateComedyShowPreset();
+        
+        // Convert base64 dataURL to Blob & File
+        const byteString = atob(url.split(',')[1]);
+        const mimeString = url.split(',')[0].split(':')[1].split(';')[0];
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+        const blob = new Blob([ab], { type: mimeString });
+        const name = presetId === 'action-movie' ? 'Daily-Action-Movie-Preset.png' : 'Sebelum-Tertawa-Itu-Dilarang-Preset.png';
+        const file = new File([blob], name, { type: 'image/png' });
+
+        updateActiveItem({ 
+            bgMedia: { url, file, type: 'image' }, 
+            generatedUrl: null 
+        });
+        setIsPlaying(false);
     };
 
     const addItem = () => {
@@ -521,6 +764,40 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                                 <span className="text-[11px] font-bold truncate flex-1 text-left">{activeItem.overlayVideo?.file.name || 'Overlay Video'}</span>
                             </button>
                         </div>
+
+                        {/* Preset Background templates */}
+                        <div className="space-y-2 pt-2">
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500 block">Template Background Default</span>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => handleSelectPreset('action-movie')}
+                                    className={`p-3 rounded-xl border text-left flex flex-col gap-1.5 transition-all text-xs relative overflow-hidden group/preset ${
+                                        activeItem.bgMedia?.file.name === 'Daily-Action-Movie-Preset.png'
+                                            ? 'bg-amber-500/10 border-amber-500/60'
+                                            : 'bg-slate-800/60 border-slate-700 hover:border-slate-600'
+                                    }`}
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-red-650/10 via-transparent to-transparent opacity-0 group-hover/preset:opacity-100 transition-all pointer-events-none" />
+                                    <span className="font-extrabold text-amber-500 flex items-center gap-1">🎥 Action Movie</span>
+                                    <span className="text-[9px] text-slate-400 leading-normal">Tema Aksi Red Curves</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => handleSelectPreset('comedy-show')}
+                                    className={`p-3 rounded-xl border text-left flex flex-col gap-1.5 transition-all text-xs relative overflow-hidden group/preset ${
+                                        activeItem.bgMedia?.file.name === 'Sebelum-Tertawa-Itu-Dilarang-Preset.png'
+                                            ? 'bg-amber-500/10 border-amber-500/60'
+                                            : 'bg-slate-800/60 border-slate-700 hover:border-slate-600'
+                                    }`}
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-amber-650/10 via-transparent to-transparent opacity-0 group-hover/preset:opacity-100 transition-all pointer-events-none" />
+                                    <span className="font-extrabold text-amber-500 flex items-center gap-1">🎭 Comedy Show</span>
+                                    <span className="text-[9px] text-slate-400 leading-normal">Tema Komedi Stage</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     {activeItem.overlayVideo && (
@@ -617,9 +894,23 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                             </div>
 
                             <div className="space-y-4 pt-4 border-t border-slate-800">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                    <TextIcon className="w-3 h-3" /> Text Overlay
-                                </label>
+                                <div className="flex items-center justify-between">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                        <TextIcon className="w-3 h-3" /> Text Overlay
+                                    </label>
+                                    <button 
+                                        type="button"
+                                        onClick={() => {
+                                            const title = prompt("Masukkan Judul Bagian Atas Video:");
+                                            if (title !== null) {
+                                                updateActiveItem({ config: { topText: title } });
+                                            }
+                                        }}
+                                        className="text-[10px] text-amber-500 hover:text-amber-400 font-bold uppercase tracking-widest flex items-center gap-1 transition-all"
+                                    >
+                                        <Plus className="w-2.5 h-2.5" /> Tambah Judul Atas
+                                    </button>
+                                </div>
                                 <div className="space-y-3">
                                     <input 
                                         type="text" 
@@ -709,6 +1000,52 @@ const VideoOverlayMaker: React.FC<VideoOverlayMakerProps> = ({ onBack }) => {
                                     <Clock className="w-3 h-3 text-amber-500" />
                                     <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
                                 </div>
+
+                                {/* Interactive Title / Top Text Overlay Button */}
+                                {!activeItem.config.topText ? (
+                                    <button 
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const txt = prompt("Masukkan Judul Bagian Atas Video:");
+                                            if (txt !== null) {
+                                                updateActiveItem({ config: { topText: txt } });
+                                            }
+                                        }}
+                                        className="absolute top-16 left-1/2 -translate-x-1/2 bg-black/70 hover:bg-amber-500 border border-white/10 text-white text-[10px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all shadow-lg z-30 select-none cursor-pointer animate-fade-in"
+                                    >
+                                        <Plus className="w-3 h-3" /> Tambah Judul Atas
+                                    </button>
+                                ) : (
+                                    <div className="absolute top-16 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/80 border border-slate-700 rounded-full px-2.5 py-1 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button 
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const txt = prompt("Ubah Judul Bagian Atas Video:", activeItem.config.topText);
+                                                if (txt !== null) {
+                                                    updateActiveItem({ config: { topText: txt } });
+                                                }
+                                            }}
+                                            className="text-[9px] hover:text-amber-500 font-bold px-1.5 text-slate-200"
+                                            title="Edit Judul"
+                                        >
+                                            Edit Judul
+                                        </button>
+                                        <span className="text-slate-600">|</span>
+                                        <button 
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                updateActiveItem({ config: { topText: '' } });
+                                            }}
+                                            className="text-[9px] hover:text-red-400 text-slate-400 font-bold px-1.5"
+                                            title="Hapus"
+                                        >
+                                            Hapus
+                                        </button>
+                                    </div>
+                                )}
 
                                 {/* Volume Toggle Overlay */}
                                 <div className="absolute bottom-20 right-6 flex flex-col gap-2">
