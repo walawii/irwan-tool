@@ -86,7 +86,7 @@ async function startServer() {
               {
                 text: `Extract news/article data from this HTML. Focus on the main article content.
                 Return JSON with fields: title, firstParagraph, imageUrl.
-                Translate the extracted text into Indonesian (Bahasa Indonesia) accurately.
+                Do not translate the extracted text; keep it exactly in its original language.
                 Ensure the imageUrl is a valid full URL if found. Do not make up a dummy image. If no valid image is found, return empty string for imageUrl.
                 
                 URL: ${url}
