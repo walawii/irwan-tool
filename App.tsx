@@ -66,6 +66,8 @@ const App: React.FC = () => {
       {currentView === 'caption-generator' && (
         <CaptionGenerator onBack={() => setCurrentView('home')} />
       )}
+
+
     </>
   );
 };

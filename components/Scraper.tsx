@@ -2,7 +2,6 @@ import React, { useState, useRef } from 'react';
 import { ArrowLeft, Search, Download, Trash2, ExternalLink, FileSpreadsheet, Plus, Globe, Loader2, StopCircle, Layers, Image as ImageIcon, AlertCircle, RefreshCw, Sparkles } from 'lucide-react';
 import { ScrapedArticle } from '../types';
 import * as XLSX from 'xlsx';
-import { GoogleGenAI, Type as GeminiType } from "@google/genai";
 
 interface ScraperProps {
   onBack: () => void;
@@ -33,49 +32,49 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
   };
 
     const fetchHtmlContent = async (url: string): Promise<{ html: string, proxy: string }> => {
-        // 1. Normalize URL
         let targetUrl = url.trim();
         if (!/^https?:\/\//i.test(targetUrl)) {
             targetUrl = 'https://' + targetUrl;
         }
 
-        // List of proxies to try in order of reliability
-        const proxies = [
-            { name: 'CORSProxy.io', get: (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}` },
-            { name: 'AllOrigins (Raw)', get: (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}` },
-            { name: 'CodeTabs', get: (u: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}` },
-            { name: 'ThingProxy', get: (u: string) => `https://thingproxy.freeboard.io/fetch/${u}` },
-            { name: 'CORSProxy.org', get: (u: string) => `https://corsproxy.org/?${encodeURIComponent(u)}` }
-        ];
+        try {
+            const response = await fetchWithTimeout('/api/scrape', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ url: targetUrl })
+            });
 
-        for (const proxy of proxies) {
-            try {
-                const proxyUrl = proxy.get(targetUrl);
-                const response = await fetchWithTimeout(proxyUrl);
-                
-                if (response.status === 200) {
-                    const text = await response.text();
-
-                    // Sanity check: ensure we didn't get an error page disguised as 200 OK
-                    if (text && text.length > 500) {
-                        const lowerText = text.toLowerCase();
-                        const isErrorPage = 
-                            (lowerText.includes('403 forbidden') && lowerText.length < 2000) || 
-                            (lowerText.includes('access denied') && lowerText.length < 2000) ||
-                            (lowerText.includes('cloudflare') && (lowerText.includes('error') || lowerText.includes('blocked'))) ||
-                            lowerText.includes('captcha-delivery') ||
-                            lowerText.includes('ddos-protection') ||
-                            lowerText.includes('security check');
-                            
-                        if (!isErrorPage) return { html: text, proxy: proxy.name };
-                    }
-                }
-            } catch (e) {
-                // Try next proxy
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.error || `Situs tersebut mengembalikan kode status ${response.status}`);
             }
-        }
 
-        throw new Error('Situs ini dilindungi atau diblokir (Cloudflare/403). Gunakan URL lain atau coba lagi nanti.');
+            const data = await response.json();
+            if (!data.html || data.html.length < 100) {
+                throw new Error('Konten html dari situs tersebut kosong atau tidak valid.');
+            }
+
+            const text = data.html;
+            const lowerText = text.toLowerCase();
+            const isErrorPage = 
+                (lowerText.includes('403 forbidden') && lowerText.length < 2000) || 
+                (lowerText.includes('access denied') && lowerText.length < 2000) ||
+                (lowerText.includes('cloudflare') && (lowerText.includes('error') || lowerText.includes('blocked'))) ||
+                lowerText.includes('captcha-delivery') ||
+                lowerText.includes('ddos-protection') ||
+                lowerText.includes('security check');
+
+            if (isErrorPage) {
+                throw new Error('Situs ini dilindungi oleh proteksi keamanan tingkat tinggi (Cloudflare/DDoS). Silakan coba dengan tautan alternatif.');
+            }
+
+            return { html: text, proxy: 'Server Scraping Engine' };
+        } catch (e: any) {
+            console.error('Server side scraping failed, attempting direct fetch fallback...', e);
+            throw new Error(e.message || 'Situs dilindungi oleh proteksi keamanan (Cloudflare/403). Gunakan URL lain atau coba lagi nanti.');
+        }
     };
 
   const resolveUrl = (baseUrl: string, relativeUrl: string): string => {
@@ -91,49 +90,21 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
 
   const extractWithAI = async (html: string, url: string): Promise<ScrapedArticle | null> => {
       try {
-          const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-          if (!apiKey) return null;
-
-          const ai = new GoogleGenAI({ apiKey });
-          
-          // Truncate HTML to save tokens and avoid limits, focusing on header and early content
-          const truncatedHtml = html.substring(0, 15000); 
-
-          const response = await ai.models.generateContent({
-              model: "gemini-3-flash-preview",
-              contents: [{
-                  role: "user",
-                  parts: [{
-                      text: `Extract news/article data from this HTML. Focus on the main article content.
-                      Return JSON with: title, firstParagraph, imageUrl.
-                      Translate the extracted text into Indonesian (Bahasa Indonesia) accurately.
-                      Ensure the imageUrl is a valid full URL if found.
-                      
-                      URL: ${url}
-                      HTML Content:
-                      ${truncatedHtml}`
-                  }]
-              }],
-              config: {
-                  responseMimeType: "application/json",
-                  responseSchema: {
-                      type: GeminiType.OBJECT,
-                      properties: {
-                          title: { type: GeminiType.STRING },
-                          firstParagraph: { type: GeminiType.STRING },
-                          imageUrl: { type: GeminiType.STRING }
-                      },
-                      required: ["title", "firstParagraph", "imageUrl"]
-                  }
-              }
+          const response = await fetchWithTimeout('/api/gemini-extract', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ html, url })
           });
 
-          const text = response.text;
-          if (!text) return null;
-          
-          // Clean potential markdown blocks
-          const cleanJSON = text.replace(/```json/g, '').replace(/```/g, '').trim();
-          const result = JSON.parse(cleanJSON);
+          if (!response.ok) {
+              const errData = await response.json().catch(() => ({}));
+              console.warn("AI extraction response error", errData.error);
+              return null;
+          }
+
+          const result = await response.json();
           
           if (result.title) {
               return {
@@ -146,7 +117,7 @@ const Scraper: React.FC<ScraperProps> = ({ onBack }) => {
               };
           }
       } catch (e) {
-          console.error("AI Extraction failed", e);
+          console.error("AI Extraction failed, falling back to manual DOM parse", e);
       }
       return null;
   };
