@@ -72,13 +72,20 @@ async function startServer() {
 
       // Import Google Gen AI SDK
       const { GoogleGenAI, Type: GeminiType } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ 
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
 
       // Truncate HTML to optimize token usage and context windows
       const truncatedHtml = html.substring(0, 30000);
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.5-flash",
         contents: [
           {
             role: "user",
@@ -121,7 +128,24 @@ async function startServer() {
       res.json(result);
     } catch (err: any) {
       console.error(`[Server Gemini Extract Error]`, err);
-      res.status(500).json({ error: err.message || "Gagal melakukan ekstraksi AI" });
+      let errMsg = err.message || "";
+      if (typeof err === "object" && err !== null) {
+        errMsg = err.message || JSON.stringify(err);
+      }
+      
+      // Handle quota exceeded/rate limit (429) friendly error message in Indonesian
+      if (
+        err.status === "RESOURCE_EXHAUSTED" || 
+        errMsg.includes("429") || 
+        errMsg.toLowerCase().includes("quota") || 
+        errMsg.toLowerCase().includes("exhausted")
+      ) {
+        errMsg = "Batas kuota Gemini API gratis terlampaui (maksimal 5 request per menit). Silakan tunggu sekitar 30 detik lalu coba lagi.";
+      } else {
+        errMsg = "Gagal melakukan ekstraksi AI dari artikel: " + errMsg;
+      }
+
+      res.status(500).json({ error: errMsg });
     }
   });
 

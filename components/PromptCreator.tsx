@@ -72,7 +72,7 @@ const PromptCreator: React.FC<PromptCreatorProps> = ({ onBack }) => {
             const base64Data = await fileToBase64(videoFile);
 
             const response = await ai.models.generateContent({
-                model: 'gemini-3-flash-preview',
+                model: 'gemini-2.5-flash',
                 contents: [
                     {
                         role: "user",
@@ -81,7 +81,7 @@ const PromptCreator: React.FC<PromptCreatorProps> = ({ onBack }) => {
                             { text: `Analisis konten visual video ini secara mendalam. Saya ingin membuat ulang video serupa menggunakan AI seperti Google Veo atau Flow.
                             ${productName ? `Produk yang ada dalam video ini adalah: "${productName}". Pastikan nama produk ini disertakan atau menjadi referensi utama dalam prompt dan narasi.` : ''}
                             
-                            Hasilkan DUA (2) prompt video terpisah (ADEGAN 1 dan ADEGAN 2), masing-masing untuk durasi 8 DETIK.
+                            Hasilkan TIGA (3) prompt video terpisah (ADEGAN 1, ADEGAN 2, dan ADEGAN 3), masing-masing untuk durasi 8 DETIK untuk membentuk satu kesatuan alur cerita yang utuh dan menarik.
                             Seluruh output, termasuk PROMPT VISUAL dan NARASI, harus dalam BAHASA INDONESIA agar hasil videonya memiliki konteks dan teks Indonesia yang kuat.
                             
                             Gunakan panduan Master Prompt berikut untuk narasi: "${MASTER_PROMPT_FLOW}"
@@ -128,9 +128,17 @@ const PromptCreator: React.FC<PromptCreatorProps> = ({ onBack }) => {
                                 },
                                 required: ["visual_prompt", "narasi_indonesia"]
                             },
+                            adegan_3: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    visual_prompt: { type: Type.STRING },
+                                    narasi_indonesia: { type: Type.STRING }
+                                },
+                                required: ["visual_prompt", "narasi_indonesia"]
+                            },
                             negative_prompt: { type: Type.STRING }
                         },
-                        required: ["adegan_1", "adegan_2", "master_prompt_flow", "auto_caption", "hashtags"]
+                        required: ["adegan_1", "adegan_2", "adegan_3", "master_prompt_flow", "auto_caption", "hashtags"]
                     }
                 }
             });
@@ -164,7 +172,7 @@ const PromptCreator: React.FC<PromptCreatorProps> = ({ onBack }) => {
         if (resultJson) {
             try {
                 const parsed = JSON.parse(resultJson);
-                const textToCopy = `ADEGAN 1:\n${parsed.adegan_1.visual_prompt}\n\nADEGAN 2:\n${parsed.adegan_2.visual_prompt}`;
+                const textToCopy = `ADEGAN 1:\n${parsed.adegan_1?.visual_prompt || ''}\n\nADEGAN 2:\n${parsed.adegan_2?.visual_prompt || ''}\n\nADEGAN 3:\n${parsed.adegan_3?.visual_prompt || ''}`;
                 navigator.clipboard.writeText(textToCopy);
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
@@ -405,12 +413,103 @@ const PromptCreator: React.FC<PromptCreatorProps> = ({ onBack }) => {
                                         <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
                                             <h4 className="text-amber-500 text-[10px] font-bold uppercase tracking-widest mb-2">Trending Hashtags</h4>
                                             <div className="flex flex-wrap gap-2">
-                                                {JSON.parse(resultJson).hashtags.map((tag: string, i: number) => (
+                                                {JSON.parse(resultJson).hashtags?.map((tag: string, i: number) => (
                                                     <span key={i} className="text-blue-400 text-sm font-medium">
                                                         {tag.startsWith('#') ? tag : `#${tag}`}
                                                     </span>
                                                 ))}
                                             </div>
+                                        </div>
+
+                                        {/* Visual Scene Breakdown */}
+                                        <div className="border-t border-slate-800 pt-6 space-y-4">
+                                            <h4 className="text-amber-500 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                                                <Video className="w-4 h-4 text-amber-500" /> Detail Adegan Hasil Analisis (3 Adegan)
+                                            </h4>
+
+                                            {/* Adegan 1 */}
+                                            {JSON.parse(resultJson).adegan_1 && (
+                                                <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800/80 space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <h5 className="text-white text-xs font-bold uppercase tracking-wider text-amber-400">Adegan 1 (8 Detik)</h5>
+                                                        <button 
+                                                            onClick={() => {
+                                                                const s = JSON.parse(resultJson).adegan_1;
+                                                                navigator.clipboard.writeText(`PROMPT VISUAL:\n${s.visual_prompt}\n\nNARASI:\n${s.narasi_indonesia}`);
+                                                                setCopied(true);
+                                                                setTimeout(() => setCopied(false), 2000);
+                                                            }}
+                                                            className="text-[9px] bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-slate-400 hover:text-white transition-colors"
+                                                        >
+                                                            Salin Adegan 1
+                                                        </button>
+                                                    </div>
+                                                    <div className="space-y-1 text-left">
+                                                        <span className="text-amber-500/80 text-[10px] uppercase font-semibold">Visual Prompt:</span>
+                                                        <p className="text-slate-300 text-xs leading-relaxed bg-slate-950 p-3 rounded border border-slate-800/50">{JSON.parse(resultJson).adegan_1.visual_prompt}</p>
+                                                    </div>
+                                                    <div className="space-y-1 text-left">
+                                                        <span className="text-emerald-500/80 text-[10px] uppercase font-semibold">Narasi Voiceover (ID):</span>
+                                                        <p className="text-slate-300 text-xs italic leading-relaxed bg-slate-950 p-3 rounded border border-slate-800/50">"{JSON.parse(resultJson).adegan_1.narasi_indonesia}"</p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Adegan 2 */}
+                                            {JSON.parse(resultJson).adegan_2 && (
+                                                <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800/80 space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <h5 className="text-white text-xs font-bold uppercase tracking-wider text-amber-400">Adegan 2 (8 Detik)</h5>
+                                                        <button 
+                                                            onClick={() => {
+                                                                const s = JSON.parse(resultJson).adegan_2;
+                                                                navigator.clipboard.writeText(`PROMPT VISUAL:\n${s.visual_prompt}\n\nNARASI:\n${s.narasi_indonesia}`);
+                                                                setCopied(true);
+                                                                setTimeout(() => setCopied(false), 2000);
+                                                            }}
+                                                            className="text-[9px] bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-slate-400 hover:text-white transition-colors"
+                                                        >
+                                                            Salin Adegan 2
+                                                        </button>
+                                                    </div>
+                                                    <div className="space-y-1 text-left">
+                                                        <span className="text-amber-500/80 text-[10px] uppercase font-semibold">Visual Prompt:</span>
+                                                        <p className="text-slate-300 text-xs leading-relaxed bg-slate-950 p-3 rounded border border-slate-800/50">{JSON.parse(resultJson).adegan_2.visual_prompt}</p>
+                                                    </div>
+                                                    <div className="space-y-1 text-left">
+                                                        <span className="text-emerald-500/80 text-[10px] uppercase font-semibold">Narasi Voiceover (ID):</span>
+                                                        <p className="text-slate-300 text-xs italic leading-relaxed bg-slate-950 p-3 rounded border border-slate-800/50">"{JSON.parse(resultJson).adegan_2.narasi_indonesia}"</p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Adegan 3 */}
+                                            {JSON.parse(resultJson).adegan_3 && (
+                                                <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800/80 space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <h5 className="text-white text-xs font-bold uppercase tracking-wider text-amber-400">Adegan 3 (8 Detik)</h5>
+                                                        <button 
+                                                            onClick={() => {
+                                                                const s = JSON.parse(resultJson).adegan_3;
+                                                                navigator.clipboard.writeText(`PROMPT VISUAL:\n${s.visual_prompt}\n\nNARASI:\n${s.narasi_indonesia}`);
+                                                                setCopied(true);
+                                                                setTimeout(() => setCopied(false), 2000);
+                                                            }}
+                                                            className="text-[9px] bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-slate-400 hover:text-white transition-colors"
+                                                        >
+                                                            Salin Adegan 3
+                                                        </button>
+                                                    </div>
+                                                    <div className="space-y-1 text-left">
+                                                        <span className="text-amber-500/80 text-[10px] uppercase font-semibold">Visual Prompt:</span>
+                                                        <p className="text-slate-300 text-xs leading-relaxed bg-slate-950 p-3 rounded border border-slate-800/50">{JSON.parse(resultJson).adegan_3.visual_prompt}</p>
+                                                    </div>
+                                                    <div className="space-y-1 text-left">
+                                                        <span className="text-emerald-500/80 text-[10px] uppercase font-semibold">Narasi Voiceover (ID):</span>
+                                                        <p className="text-slate-300 text-xs italic leading-relaxed bg-slate-950 p-3 rounded border border-slate-800/50">"{JSON.parse(resultJson).adegan_3.narasi_indonesia}"</p>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

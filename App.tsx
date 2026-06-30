@@ -10,7 +10,6 @@ import ImageStudio from './components/ImageStudio';
 import VideoSplitter from './components/VideoSplitter';
 import PromptCreator from './components/PromptCreator';
 import ImageToVideo from './components/ImageToVideo';
-import PromptGenerator from './components/PromptGenerator';
 import CaptionGenerator from './components/CaptionGenerator';
 import { ViewState } from './types';
 
@@ -57,10 +56,6 @@ const App: React.FC = () => {
 
       {currentView === 'image-to-video' && (
         <ImageToVideo onBack={() => setCurrentView('home')} />
-      )}
-
-      {currentView === 'prompt-generator' && (
-        <PromptGenerator onBack={() => setCurrentView('home')} />
       )}
 
       {currentView === 'caption-generator' && (
