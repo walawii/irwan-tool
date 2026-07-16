@@ -16,6 +16,7 @@ const PromptCreator: React.FC<PromptCreatorProps> = ({ onBack }) => {
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
     const [productName, setProductName] = useState('');
+    const [sceneCount, setSceneCount] = useState<1 | 3>(3);
 
     // Image Mixer State
     const [productImage, setProductImage] = useState<string | null>(null);
@@ -79,15 +80,15 @@ const PromptCreator: React.FC<PromptCreatorProps> = ({ onBack }) => {
                         parts: [
                             { inlineData: { data: base64Data, mimeType: videoFile.type } },
                             { text: `Analisis konten visual video ini secara mendalam. Saya ingin membuat ulang video serupa menggunakan AI seperti Google Veo atau Flow.
-                            ${productName ? `Produk yang ada dalam video ini adalah: "${productName}". Pastikan nama produk ini disertakan atau menjadi referensi utama dalam prompt dan narasi.` : ''}
+                            ${productName ? `Produk yang ada dalam video ini adalah: "${productName}". Pastikan nama produk ini disertakan atau menjadi referensi utama dalam prompt.` : ''}
                             
-                            Hasilkan TIGA (3) prompt video terpisah (ADEGAN 1, ADEGAN 2, dan ADEGAN 3), masing-masing untuk durasi 8 DETIK untuk membentuk satu kesatuan alur cerita yang utuh dan menarik.
-                            Seluruh output, termasuk PROMPT VISUAL dan NARASI, harus dalam BAHASA INDONESIA agar hasil videonya memiliki konteks dan teks Indonesia yang kuat.
-                            
-                            Gunakan panduan Master Prompt berikut untuk narasi: "${MASTER_PROMPT_FLOW}"
+                            ${sceneCount === 3 
+                              ? `Hasilkan TIGA (3) prompt video terpisah (ADEGAN 1, ADEGAN 2, dan ADEGAN 3), masing-masing untuk durasi 8 DETIK untuk membentuk satu kesatuan alur cerita yang utuh dan menarik. Seluruh output, termasuk PROMPT VISUAL dan NARASI, harus dalam BAHASA INDONESIA agar hasil videonya memiliki konteks dan teks Indonesia yang kuat. Gunakan panduan Master Prompt berikut untuk narasi: "${MASTER_PROMPT_FLOW}"`
+                              : `Hasilkan SATU (1) prompt video tunggal saja (ADEGAN 1) yang mereproduksi/mendeskripsikan ulang 1 adegan dari video yang diupload secara presisi dengan format VIDEO ASMR berdurasi 10 DETIK. Prompt visual harus dirancang sangat detail untuk menyoroti gerakan memuaskan, detail tekstur close-up, dan nuansa terapeutik khas ASMR. Khusus untuk mode 1 adegan ASMR ini, Anda TIDAK PERLU membuat narasi suara (voiceover). Sebagai gantinya, berikan deskripsi/rekomendasi detail musik latar belakang (soundtrack/backsound) dan efek suara ASMR (seperti ketukan, gesekan, bisikan, desiran air, dll) yang sangat cocok untuk melengkapi video tersebut pada kolom "rekomendasi_musik".`
+                            }
                             
                             Tambahkan juga:
-                            1. AUTO CAPTION: Caption media sosial yang menarik (copywriting) dalam Bahasa Indonesia.
+                            1. AUTO CAPTION: Caption media sosial yang menarik (copywriting) ${sceneCount === 3 ? 'dalam Bahasa Indonesia' : 'dalam Bahasa Inggris (English)'}.
                             2. 5 HASHTAGS: 5 tagar yang sedang tren dan sangat relevan dengan isi video.
                             
                             Ekstrak elemen kunci:
@@ -116,29 +117,37 @@ const PromptCreator: React.FC<PromptCreatorProps> = ({ onBack }) => {
                                 type: Type.OBJECT,
                                 properties: {
                                     visual_prompt: { type: Type.STRING },
-                                    narasi_indonesia: { type: Type.STRING }
+                                    ...(sceneCount === 3 ? {
+                                        narasi_indonesia: { type: Type.STRING }
+                                    } : {
+                                        rekomendasi_musik: { type: Type.STRING }
+                                    })
                                 },
-                                required: ["visual_prompt", "narasi_indonesia"]
+                                required: sceneCount === 3 ? ["visual_prompt", "narasi_indonesia"] : ["visual_prompt", "rekomendasi_musik"]
                             },
-                            adegan_2: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    visual_prompt: { type: Type.STRING },
-                                    narasi_indonesia: { type: Type.STRING }
+                            ...(sceneCount === 3 ? {
+                                adegan_2: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        visual_prompt: { type: Type.STRING },
+                                        narasi_indonesia: { type: Type.STRING }
+                                    },
+                                    required: ["visual_prompt", "narasi_indonesia"]
                                 },
-                                required: ["visual_prompt", "narasi_indonesia"]
-                            },
-                            adegan_3: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    visual_prompt: { type: Type.STRING },
-                                    narasi_indonesia: { type: Type.STRING }
-                                },
-                                required: ["visual_prompt", "narasi_indonesia"]
-                            },
+                                adegan_3: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        visual_prompt: { type: Type.STRING },
+                                        narasi_indonesia: { type: Type.STRING }
+                                    },
+                                    required: ["visual_prompt", "narasi_indonesia"]
+                                }
+                            } : {}),
                             negative_prompt: { type: Type.STRING }
                         },
-                        required: ["adegan_1", "adegan_2", "adegan_3", "master_prompt_flow", "auto_caption", "hashtags"]
+                        required: sceneCount === 3 
+                            ? ["adegan_1", "adegan_2", "adegan_3", "master_prompt_flow", "auto_caption", "hashtags"]
+                            : ["adegan_1", "master_prompt_flow", "auto_caption", "hashtags"]
                     }
                 }
             });
@@ -172,7 +181,13 @@ const PromptCreator: React.FC<PromptCreatorProps> = ({ onBack }) => {
         if (resultJson) {
             try {
                 const parsed = JSON.parse(resultJson);
-                const textToCopy = `ADEGAN 1:\n${parsed.adegan_1?.visual_prompt || ''}\n\nADEGAN 2:\n${parsed.adegan_2?.visual_prompt || ''}\n\nADEGAN 3:\n${parsed.adegan_3?.visual_prompt || ''}`;
+                let textToCopy = `ADEGAN 1:\n${parsed.adegan_1?.visual_prompt || ''}`;
+                if (parsed.adegan_2?.visual_prompt) {
+                    textToCopy += `\n\nADEGAN 2:\n${parsed.adegan_2.visual_prompt}`;
+                }
+                if (parsed.adegan_3?.visual_prompt) {
+                    textToCopy += `\n\nADEGAN 3:\n${parsed.adegan_3.visual_prompt}`;
+                }
                 navigator.clipboard.writeText(textToCopy);
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
@@ -301,6 +316,28 @@ const PromptCreator: React.FC<PromptCreatorProps> = ({ onBack }) => {
                             />
                         </div>
 
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold text-slate-400 uppercase tracking-widest block">3. Jumlah Adegan Output</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setSceneCount(3)}
+                                    className={`p-3.5 rounded-xl border text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 text-center ${sceneCount === 3 ? 'bg-amber-500/10 border-amber-500 text-amber-400' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'}`}
+                                >
+                                    <span>3 Adegan</span>
+                                    <span className="text-[9px] opacity-70 font-normal">Alur Cerita Utuh (24 Detik)</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setSceneCount(1)}
+                                    className={`p-3.5 rounded-xl border text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 text-center ${sceneCount === 1 ? 'bg-amber-500/10 border-amber-500 text-amber-400' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'}`}
+                                >
+                                    <span>1 Adegan ASMR (Tanpa Narasi)</span>
+                                    <span className="text-[9px] opacity-70 font-normal">Video 10 Detik + Rekomendasi Musik</span>
+                                </button>
+                            </div>
+                        </div>
+
                         {error && (
                             <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-lg flex items-center gap-2 text-red-400 text-sm">
                                 <AlertTriangle className="w-4 h-4" />
@@ -424,34 +461,46 @@ const PromptCreator: React.FC<PromptCreatorProps> = ({ onBack }) => {
                                         {/* Visual Scene Breakdown */}
                                         <div className="border-t border-slate-800 pt-6 space-y-4">
                                             <h4 className="text-amber-500 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                                                <Video className="w-4 h-4 text-amber-500" /> Detail Adegan Hasil Analisis (3 Adegan)
+                                                <Video className="w-4 h-4 text-amber-500" /> Detail Adegan Hasil Analisis ({JSON.parse(resultJson).adegan_2 ? '3 Adegan' : '1 Adegan'})
                                             </h4>
 
                                             {/* Adegan 1 */}
                                             {JSON.parse(resultJson).adegan_1 && (
                                                 <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800/80 space-y-3">
                                                     <div className="flex items-center justify-between">
-                                                        <h5 className="text-white text-xs font-bold uppercase tracking-wider text-amber-400">Adegan 1 (8 Detik)</h5>
+                                                        <h5 className="text-white text-xs font-bold uppercase tracking-wider text-amber-400">
+                                                            {JSON.parse(resultJson).adegan_2 ? 'Adegan 1 (8 Detik)' : 'Adegan Utama (10 Detik)'}
+                                                        </h5>
                                                         <button 
                                                             onClick={() => {
                                                                 const s = JSON.parse(resultJson).adegan_1;
-                                                                navigator.clipboard.writeText(`PROMPT VISUAL:\n${s.visual_prompt}\n\nNARASI:\n${s.narasi_indonesia}`);
+                                                                const textToCopy = s.rekomendasi_musik 
+                                                                    ? `PROMPT VISUAL:\n${s.visual_prompt}\n\nMUSIK LATAR:\n${s.rekomendasi_musik}` 
+                                                                    : `PROMPT VISUAL:\n${s.visual_prompt}\n\nNARASI:\n${s.narasi_indonesia}`;
+                                                                navigator.clipboard.writeText(textToCopy);
                                                                 setCopied(true);
                                                                 setTimeout(() => setCopied(false), 2000);
                                                             }}
                                                             className="text-[9px] bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded text-slate-400 hover:text-white transition-colors"
                                                         >
-                                                            Salin Adegan 1
+                                                            {JSON.parse(resultJson).adegan_2 ? 'Salin Adegan 1' : 'Salin Adegan'}
                                                         </button>
                                                     </div>
                                                     <div className="space-y-1 text-left">
                                                         <span className="text-amber-500/80 text-[10px] uppercase font-semibold">Visual Prompt:</span>
                                                         <p className="text-slate-300 text-xs leading-relaxed bg-slate-950 p-3 rounded border border-slate-800/50">{JSON.parse(resultJson).adegan_1.visual_prompt}</p>
                                                     </div>
-                                                    <div className="space-y-1 text-left">
-                                                        <span className="text-emerald-500/80 text-[10px] uppercase font-semibold">Narasi Voiceover (ID):</span>
-                                                        <p className="text-slate-300 text-xs italic leading-relaxed bg-slate-950 p-3 rounded border border-slate-800/50">"{JSON.parse(resultJson).adegan_1.narasi_indonesia}"</p>
-                                                    </div>
+                                                    {JSON.parse(resultJson).adegan_1.rekomendasi_musik ? (
+                                                        <div className="space-y-1 text-left">
+                                                            <span className="text-sky-400 text-[10px] uppercase font-semibold flex items-center gap-1">🎵 Rekomendasi Musik Latar:</span>
+                                                            <p className="text-slate-300 text-xs italic leading-relaxed bg-slate-950 p-3 rounded border border-slate-800/50">"{JSON.parse(resultJson).adegan_1.rekomendasi_musik}"</p>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-1 text-left">
+                                                            <span className="text-emerald-500/80 text-[10px] uppercase font-semibold">Narasi Voiceover (ID):</span>
+                                                            <p className="text-slate-300 text-xs italic leading-relaxed bg-slate-950 p-3 rounded border border-slate-800/50">"{JSON.parse(resultJson).adegan_1.narasi_indonesia || ''}"</p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
 

@@ -15,6 +15,128 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  // Server-Side Shorts Downloader (Bypasses browser CORS and Cloudflare restrictions)
+  app.post("/api/shorts-download", async (req, res) => {
+    try {
+      const { url } = req.body;
+      if (!url) {
+        return res.status(400).json({ error: "URL parameter is required" });
+      }
+
+      console.log(`[Server Shorts Downloader] Processing: ${url}`);
+
+      const COBALT_INSTANCES = [
+        'https://api.cobalt.tools/api/json',
+        'https://api.server.cobalt.tools/api/json',
+        'https://cobalt.api.ryuko.space/api/json',
+        'https://cobalt-api.kwiateusz.pl/api/json',
+        'https://tools.betweenthelines.org/api/json',
+        'https://api.cobalt.crush.sh/api/json',
+        'https://cobalt.run/api/json'
+      ];
+
+      const requestBody = {
+        url: url,
+        vQuality: '720',
+        vCodec: 'h264',
+        filenamePattern: 'classic',
+        isAudioOnly: false,
+        disableMetadata: true,
+        twitterGif: true
+      };
+
+      let successData: any = null;
+      let lastError: string = "Semua server Cobalt tidak merespon";
+
+      for (const instance of COBALT_INSTANCES) {
+        try {
+          console.log(`[Server Shorts Downloader] Trying instance: ${instance}`);
+          const response = await fetch(instance, {
+            method: 'POST',
+            headers: { 
+              'Accept': 'application/json', 
+              'Content-Type': 'application/json',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+            },
+            body: JSON.stringify(requestBody),
+            signal: AbortSignal.timeout(6000) // 6 seconds timeout per instance
+          });
+
+          if (response.ok) {
+            const data = await response.json() as any;
+            if (data && (['stream', 'redirect', 'tunnel', 'picker'].includes(data.status) || data.url)) {
+              let directUrl = data.url;
+              if (data.status === 'picker' && data.picker && data.picker.length > 0) {
+                directUrl = data.picker[0].url;
+              }
+              if (directUrl) {
+                successData = { url: directUrl, status: data.status };
+                console.log(`[Server Shorts Downloader] Success with ${instance}`);
+                break;
+              }
+            }
+          } else {
+            const errText = await response.text();
+            console.warn(`[Server Shorts Downloader] Instance ${instance} returned status ${response.status}: ${errText}`);
+          }
+        } catch (e: any) {
+          console.warn(`[Server Shorts Downloader] Instance ${instance} failed:`, e.message || e);
+          lastError = e.message || String(e);
+        }
+      }
+
+      if (successData) {
+        return res.json(successData);
+      }
+
+      throw new Error(`Semua server Cobalt sibuk atau sedang mengalami gangguan. Silakan gunakan tombol "Unduh Manual" atau coba lagi nanti. (Error terakhir: ${lastError})`);
+    } catch (err: any) {
+      console.error(`[Server Shorts Downloader Error]`, err);
+      res.status(500).json({ error: err.message || "Gagal mengunduh video" });
+    }
+  });
+
+  // Streaming proxy to bypass any download hotlink/referer restrictions from video providers
+  app.get("/api/shorts-stream", async (req, res) => {
+    try {
+      const videoUrl = req.query.url as string;
+      const filename = (req.query.filename as string) || "shorts-video.mp4";
+
+      if (!videoUrl) {
+        return res.status(400).send("Parameter URL diperlukan");
+      }
+
+      console.log(`[Server Shorts Stream] Proxying download for: ${videoUrl}`);
+
+      const response = await fetch(videoUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Gagal mengunduh video dari sumber: HTTP ${response.status}`);
+      }
+
+      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
+      res.setHeader("Content-Type", response.headers.get("content-type") || "video/mp4");
+      
+      const contentLength = response.headers.get("content-length");
+      if (contentLength) {
+        res.setHeader("Content-Length", contentLength);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      res.send(buffer);
+    } catch (err: any) {
+      console.error(`[Server Shorts Stream Error]`, err);
+      if (!res.headersSent) {
+        res.status(500).send(err.message || "Gagal menyalurkan video");
+      }
+    }
+  });
+
   // Server-Side News/Article Fetcher Proxy (Bypasses browser CORS and public proxy 403 blocks)
   app.post("/api/scrape", async (req, res) => {
     try {

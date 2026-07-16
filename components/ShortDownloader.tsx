@@ -15,25 +15,6 @@ interface ShortDownloaderProps {
   onBack: () => void;
 }
 
-// Daftar instansi Cobalt yang diperbarui dan lebih stabil
-const COBALT_INSTANCES = [
-    'https://api.cobalt.tools/api/json',
-    'https://cobalt.api.ryuko.space/api/json',
-    'https://api.server.cobalt.tools/api/json',
-    'https://cobalt-api.kwiateusz.pl/api/json',
-    'https://tools.betweenthelines.org/api/json',
-    'https://cobalt.154.53.53.53.nip.io/api/json',
-    'https://api.cobalt.crush.sh/api/json',
-    'https://cobalt.q-9.workers.dev/api/json',
-    'https://api.cobalt.run/api/json'
-];
-
-const PROXIES = [
-    (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-    (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    (u: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`
-];
-
 const ShortDownloader: React.FC<ShortDownloaderProps> = ({ onBack }) => {
   const [urlInput, setUrlInput] = useState('');
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
@@ -90,103 +71,40 @@ const ShortDownloader: React.FC<ShortDownloaderProps> = ({ onBack }) => {
   const downloadFileInternal = async (video: YouTubeVideo): Promise<boolean> => {
     setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'processing', error: undefined } : v));
 
-    // Request body for Cobalt v10 (latest)
-    const requestBody = {
-        url: video.url,
-        vQuality: '720',
-        vCodec: 'h264',
-        filenamePattern: 'classic',
-        isAudioOnly: false,
-        disableMetadata: true,
-        twitterGif: true
-    };
-
-    // Helper function to try an instance with multiple methods racing
-    const tryInstance = async (apiUrl: string) => {
-        const methods = [
-            // Direct
-            () => fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody)
-            }),
-            // Top Proxy
-            () => fetch(PROXIES[0](apiUrl), {
-                method: 'POST',
-                headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody)
-            })
-        ];
-
-        // Race the first two methods (direct and first proxy)
-        // This usually covers 90% of cases much faster
-        try {
-            const response = await Promise.race(methods.map(m => m().catch(err => {
-                // Return a fake failing response to not break the race if one fails early
-                return { ok: false } as Response;
-            })));
-
-            if (response && response.ok) {
-                const data = await response.json();
-                if (['stream', 'redirect', 'tunnel', 'picker'].includes(data.status) || data.url) {
-                    let directUrl = data.url;
-                    if (data.status === 'picker' && data.picker && data.picker.length > 0) {
-                        directUrl = data.picker[0].url;
-                    }
-                    return directUrl;
-                }
-            }
-        } catch (e) {
-            return null;
-        }
-        return null;
-    };
-
-    // Parallel attempt to the first 3 instances for maximum speed
-    const initialInstances = COBALT_INSTANCES.slice(0, 3);
     try {
-        const result = await Promise.any(initialInstances.map(url => 
-            tryInstance(url).then(res => {
-                if (res) return res;
-                throw new Error('fail');
-            })
-        ));
+      const response = await fetch('/api/shorts-download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: video.url })
+      });
 
-        if (result) {
-            setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'done', downloadUrl: result } : v));
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Server mengembalikan HTTP ${response.status}`);
+      }
 
-            const link = document.createElement('a');
-            link.href = result;
-            link.setAttribute('download', `shorts-${video.id}.mp4`);
-            link.target = '_blank';
-            link.rel = 'noreferrer';
-            document.body.appendChild(link);
-            link.click();
-            setTimeout(() => document.body.removeChild(link), 100);
-            return true;
-        }
-    } catch (e) {
-        // If initial race fails, fall back to sequential check for ALL remaining instances
-        // to ensure reliability if everything is slow/blocked
-        for (const apiUrl of COBALT_INSTANCES) {
-            const result = await tryInstance(apiUrl);
-            if (result) {
-                setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'done', downloadUrl: result } : v));
-                const link = document.createElement('a');
-                link.href = result;
-                link.setAttribute('download', `shorts-${video.id}.mp4`);
-                link.target = '_blank';
-                link.rel = 'noreferrer';
-                document.body.appendChild(link);
-                link.click();
-                setTimeout(() => document.body.removeChild(link), 100);
-                return true;
-            }
-        }
+      const data = await response.json();
+      if (!data.url) {
+        throw new Error("Tautan unduh tidak ditemukan.");
+      }
+
+      // Gunakan server-side stream proxy untuk menyalurkan video agar tidak terkena pemblokiran browser
+      const streamUrl = `/api/shorts-stream?url=${encodeURIComponent(data.url)}&filename=${encodeURIComponent(`shorts-${video.id}.mp4`)}`;
+
+      setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'done', downloadUrl: streamUrl } : v));
+
+      const link = document.createElement('a');
+      link.href = streamUrl;
+      link.setAttribute('download', `shorts-${video.id}.mp4`);
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => document.body.removeChild(link), 100);
+      return true;
+    } catch (e: any) {
+      console.error(e);
+      setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'error', error: e.message || 'Server sedang sibuk atau link tidak didukung.' } : v));
+      return false;
     }
-
-    setVideos(prev => prev.map(v => v.id === video.id ? { ...v, status: 'error', error: 'Server sibuk atau link tidak didukung. Coba tombol Manual.' } : v));
-    return false;
   };
 
   const handleDownloadAll = async () => {

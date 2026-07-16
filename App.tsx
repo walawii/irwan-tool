@@ -11,6 +11,7 @@ import VideoSplitter from './components/VideoSplitter';
 import PromptCreator from './components/PromptCreator';
 import ImageToVideo from './components/ImageToVideo';
 import CaptionGenerator from './components/CaptionGenerator';
+import VideoOverlay916 from './components/VideoOverlay916';
 import { ViewState } from './types';
 
 const App: React.FC = () => {
@@ -60,6 +61,10 @@ const App: React.FC = () => {
 
       {currentView === 'caption-generator' && (
         <CaptionGenerator onBack={() => setCurrentView('home')} />
+      )}
+
+      {currentView === 'video-overlay-916' && (
+        <VideoOverlay916 onBack={() => setCurrentView('home')} />
       )}
 
 
