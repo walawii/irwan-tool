@@ -51,7 +51,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ onBack }) => {
             };
 
             let operation = await ai.models.generateVideos({
-                model: 'veo-3.1-fast-generate-preview',
+                model: 'veo-3.1-lite-generate-preview',
                 prompt: prompt,
                 image: imagePart,
                 config: {

@@ -117,4 +117,4 @@ export interface ScrapedArticle {
   isAiImproved?: boolean;
 }
 
-export type ViewState = 'home' | 'editor' | 'scraper' | 'shorts' | 'frames' | 'overlay' | 'image-studio' | 'video-splitter' | 'prompt-creator' | 'image-to-video' | 'caption-generator' | 'video-overlay-916';
+export type ViewState = 'home' | 'editor' | 'scraper' | 'video-splitter' | 'prompt-creator' | 'image-to-video' | 'caption-generator' | 'mini-cooking' | 'mini-toy' | 'minilapse-studio';

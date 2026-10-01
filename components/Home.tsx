@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Clapperboard, FileSpreadsheet, ArrowRight, Youtube, LayoutTemplate, Layers, ImageIcon, Facebook, Scissors, Sparkles, Film, Hash, Smartphone } from 'lucide-react';
+import { Clapperboard, FileSpreadsheet, ArrowRight, Scissors, Sparkles, Film, Hash, Utensils, Bike } from 'lucide-react';
 import { ViewState } from '../types';
 
 interface HomeProps {
@@ -28,8 +28,30 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full mx-auto">
           
+          {/* MiniLapse Studio AI Card (Master Storyboard ASMR Generator) */}
+          <button 
+            onClick={() => onNavigate('minilapse-studio')}
+            className="group relative bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/60 border border-cyan-500/50 hover:border-cyan-400 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_35px_rgba(34,211,238,0.25)] flex flex-col min-h-[16rem] col-span-1 md:col-span-2 lg:col-span-1"
+          >
+            <div className="bg-cyan-500/20 w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform border border-cyan-400/40">
+              <Film className="w-5 h-5 text-cyan-300" />
+            </div>
+            <span className="absolute top-4 right-4 bg-cyan-500/20 text-cyan-300 text-[8px] font-black uppercase px-2 py-0.5 rounded-md border border-cyan-400/30 tracking-wider flex items-center gap-1 shadow-sm">
+              <Sparkles className="w-2.5 h-2.5 text-yellow-300" />
+              NEW MASTER AI
+            </span>
+            <h3 className="text-lg font-black text-white mb-2 group-hover:text-cyan-300 transition-colors uppercase tracking-tight flex items-center gap-2">
+              MiniLapse Studio AI
+            </h3>
+            <p className="text-slate-300 text-[11px] mb-6 leading-relaxed font-medium">
+              Generator Master Storyboard 9:16 untuk video ASMR Timelapse Miniatur (Honda PCX, Suzuki Jimny, Gundam, Diecast). Hasilkan prompt Midjourney, Veo/Luma video prompt, & JSON Flow AI!
+            </p>
+            <div className="mt-auto flex items-center text-cyan-300 text-[10px] font-black uppercase tracking-widest">
+              Buka Studio <ArrowRight className="w-3.5 h-3.5 ml-2 group-hover:translate-x-1.5 transition-transform text-cyan-400" />
+            </div>
+          </button>
 
-           {/* Image to Video Card */}
+          {/* Image to Video Card */}
           <button 
             onClick={() => onNavigate('image-to-video')}
             className="group relative bg-slate-900/50 border border-slate-700 hover:border-teal-400 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(45,212,191,0.15)] flex flex-col min-h-[16rem]"
@@ -43,6 +65,46 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             </p>
             <div className="mt-auto flex items-center text-teal-400 text-[10px] font-semibold uppercase tracking-widest">
               Generate Video <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </button>
+
+          {/* Mini Cooking Video Card */}
+          <button 
+            onClick={() => onNavigate('mini-cooking')}
+            className="group relative bg-slate-900/50 border border-slate-700 hover:border-pink-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(236,72,153,0.15)] flex flex-col min-h-[16rem]"
+          >
+            <div className="bg-pink-500/10 w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <Utensils className="w-5 h-5 text-pink-500" />
+            </div>
+            <span className="absolute top-4 right-4 bg-pink-500/10 text-pink-400 text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded border border-pink-500/20 tracking-wider">
+              ASMR ACTIVE
+            </span>
+            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-pink-500 transition-colors uppercase tracking-tight">Mini Cooking Video</h3>
+            <p className="text-slate-400 text-[10px] mb-6 leading-relaxed">
+              Asset generation dari gambar hingga video prompt. Buat storyboard masakan miniatur estetik & ASMR.
+            </p>
+            <div className="mt-auto flex items-center text-pink-500 text-[10px] font-semibold uppercase tracking-widest">
+              Mulai Cooking <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </button>
+
+          {/* Mini Toy Studio / Assembly Generator */}
+          <button 
+            onClick={() => onNavigate('mini-toy')}
+            className="group relative bg-slate-900/50 border border-slate-700 hover:border-cyan-400 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(34,211,238,0.15)] flex flex-col min-h-[16rem]"
+          >
+            <div className="bg-cyan-500/10 w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <Bike className="w-5 h-5 text-cyan-400" />
+            </div>
+            <span className="absolute top-4 right-4 bg-cyan-500/10 text-cyan-400 text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded border border-cyan-500/20 tracking-wider">
+              NEW TOY ASMR
+            </span>
+            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors uppercase tracking-tight">Mini Toy Studio</h3>
+            <p className="text-slate-400 text-[10px] mb-6 leading-relaxed">
+              Buat skenario rakitan miniatur mainan (motor Ninja H2R, robot, diecast) dengan desis oli & desing mesin ASMR garing.
+            </p>
+            <div className="mt-auto flex items-center text-cyan-400 text-[10px] font-semibold uppercase tracking-widest">
+              Rakit Miniatur <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform" />
             </div>
           </button>
 
@@ -114,23 +176,6 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             </div>
           </button>
 
-
-          <button 
-            onClick={() => onNavigate('image-studio')}
-            className="group relative bg-slate-900/50 border border-slate-700 hover:border-indigo-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(99,102,241,0.15)] flex flex-col min-h-[16rem]"
-          >
-            <div className="bg-indigo-500/10 w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <ImageIcon className="w-5 h-5 text-indigo-400" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-indigo-400 transition-colors uppercase tracking-tight">Graphic Studio</h3>
-            <p className="text-slate-400 text-[10px] mb-6 leading-relaxed">
-              Produce high-quality images and add professional text overlays.
-            </p>
-            <div className="mt-auto flex items-center text-indigo-400 text-[10px] font-semibold uppercase tracking-widest">
-              Open Studio <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </button>
-
           {/* Article Scraper Card */}
           <button 
             onClick={() => onNavigate('scraper')}
@@ -145,74 +190,6 @@ const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             </p>
             <div className="mt-auto flex items-center text-green-400 text-[10px] font-semibold uppercase tracking-widest">
               Scrape Now <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </button>
-
-          {/* YouTube Downloader Card */}
-          <button 
-            onClick={() => onNavigate('shorts')}
-            className="group relative bg-slate-900/50 border border-slate-700 hover:border-red-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(239,68,68,0.15)] flex flex-col min-h-[16rem]"
-          >
-            <div className="bg-red-500/10 w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <Youtube className="w-5 h-5 text-red-500" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-red-500 transition-colors uppercase tracking-tight">Shorts Downloader</h3>
-            <p className="text-slate-400 text-[10px] mb-6 leading-relaxed">
-              Batch process and download high-quality vertical videos.
-            </p>
-            <div className="mt-auto flex items-center text-red-500 text-[10px] font-semibold uppercase tracking-widest">
-              Download <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </button>
-
-          {/* Frame & Brand Card */}
-          <button 
-            onClick={() => onNavigate('frames')}
-            className="group relative bg-slate-900/50 border border-slate-700 hover:border-purple-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(168,85,247,0.15)] flex flex-col min-h-[16rem]"
-          >
-            <div className="bg-purple-500/10 w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <LayoutTemplate className="w-5 h-5 text-purple-400" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-purple-400 transition-colors uppercase tracking-tight">Frame & Brand</h3>
-            <p className="text-slate-400 text-[10px] mb-6 leading-relaxed">
-              Add custom frames and watermarks to your videos.
-            </p>
-            <div className="mt-auto flex items-center text-purple-400 text-[10px] font-semibold uppercase tracking-widest">
-              Apply Frames <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </button>
-
-          {/* Video Overlay Maker Card */}
-          <button 
-            onClick={() => onNavigate('overlay')}
-            className="group relative bg-slate-900/50 border border-slate-700 hover:border-emerald-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] flex flex-col min-h-[16rem]"
-          >
-            <div className="bg-emerald-500/10 w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <Layers className="w-5 h-5 text-emerald-500" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-emerald-500 transition-colors uppercase tracking-tight">Video Overlay</h3>
-            <p className="text-slate-400 text-[10px] mb-6 leading-relaxed">
-              Stack two videos for reaction or tutorial content.
-            </p>
-            <div className="mt-auto flex items-center text-emerald-500 text-[10px] font-semibold uppercase tracking-widest">
-              Create Overlay <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform" />
-            </div>
-          </button>
-
-          {/* 9:16 Follow & CTA Card */}
-          <button 
-            onClick={() => onNavigate('video-overlay-916')}
-            className="group relative bg-slate-900/50 border border-slate-700 hover:border-rose-500 rounded-2xl p-6 text-left transition-all hover:shadow-[0_0_30px_rgba(244,63,94,0.15)] flex flex-col min-h-[16rem]"
-          >
-            <div className="bg-rose-500/10 w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <Smartphone className="w-5 h-5 text-rose-500" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2 group-hover:text-rose-500 transition-colors uppercase tracking-tight">9:16 Follow & CTA</h3>
-            <p className="text-slate-400 text-[10px] mb-6 leading-relaxed">
-              Create viral vertical videos with header text, interactive follow widget, and custom comment CTA.
-            </p>
-            <div className="mt-auto flex items-center text-rose-500 text-[10px] font-semibold uppercase tracking-widest">
-              Create Video <ArrowRight className="w-3 h-3 ml-2 group-hover:translate-x-1 transition-transform" />
             </div>
           </button>
 

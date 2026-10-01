@@ -154,7 +154,7 @@ const ImageStudio: React.FC<ImageStudioProps> = ({ onBack }) => {
             }
 
             const result = await ai.models.generateContent({
-                model: 'gemini-2.5-flash-image',
+                model: 'gemini-3.1-flash-lite-image',
                 contents,
                 config: { imageConfig: { aspectRatio } }
             });

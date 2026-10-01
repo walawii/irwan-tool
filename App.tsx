@@ -3,15 +3,13 @@ import React, { useState } from 'react';
 import Home from './components/Home';
 import VideoEditor from './components/VideoEditor';
 import Scraper from './components/Scraper';
-import ShortDownloader from './components/ShortDownloader';
-import FrameEditor from './components/FrameEditor';
-import VideoOverlayMaker from './components/VideoOverlayMaker';
-import ImageStudio from './components/ImageStudio';
 import VideoSplitter from './components/VideoSplitter';
 import PromptCreator from './components/PromptCreator';
 import ImageToVideo from './components/ImageToVideo';
 import CaptionGenerator from './components/CaptionGenerator';
-import VideoOverlay916 from './components/VideoOverlay916';
+import MiniCookingVideo from './components/MiniCookingVideo';
+import MiniToyStudio from './components/MiniToyStudio';
+import MiniLapseStudio from './components/MiniLapseStudio';
 import { ViewState } from './types';
 
 const App: React.FC = () => {
@@ -31,22 +29,6 @@ const App: React.FC = () => {
         <Scraper onBack={() => setCurrentView('home')} />
       )}
 
-      {currentView === 'shorts' && (
-        <ShortDownloader onBack={() => setCurrentView('home')} />
-      )}
-
-      {currentView === 'frames' && (
-        <FrameEditor onBack={() => setCurrentView('home')} />
-      )}
-
-      {currentView === 'overlay' && (
-        <VideoOverlayMaker onBack={() => setCurrentView('home')} />
-      )}
-
-      {currentView === 'image-studio' && (
-        <ImageStudio onBack={() => setCurrentView('home')} />
-      )}
-
       {currentView === 'video-splitter' && (
         <VideoSplitter onBack={() => setCurrentView('home')} />
       )}
@@ -63,11 +45,17 @@ const App: React.FC = () => {
         <CaptionGenerator onBack={() => setCurrentView('home')} />
       )}
 
-      {currentView === 'video-overlay-916' && (
-        <VideoOverlay916 onBack={() => setCurrentView('home')} />
+      {currentView === 'mini-cooking' && (
+        <MiniCookingVideo onBack={() => setCurrentView('home')} />
       )}
 
+      {currentView === 'mini-toy' && (
+        <MiniToyStudio onBack={() => setCurrentView('home')} />
+      )}
 
+      {currentView === 'minilapse-studio' && (
+        <MiniLapseStudio onBack={() => setCurrentView('home')} />
+      )}
     </>
   );
 };

@@ -73,7 +73,7 @@ const PromptCreator: React.FC<PromptCreatorProps> = ({ onBack }) => {
             const base64Data = await fileToBase64(videoFile);
 
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
+                model: 'gemini-3.8-flash',
                 contents: [
                     {
                         role: "user",
@@ -84,7 +84,26 @@ const PromptCreator: React.FC<PromptCreatorProps> = ({ onBack }) => {
                             
                             ${sceneCount === 3 
                               ? `Hasilkan TIGA (3) prompt video terpisah (ADEGAN 1, ADEGAN 2, dan ADEGAN 3), masing-masing untuk durasi 8 DETIK untuk membentuk satu kesatuan alur cerita yang utuh dan menarik. Seluruh output, termasuk PROMPT VISUAL dan NARASI, harus dalam BAHASA INDONESIA agar hasil videonya memiliki konteks dan teks Indonesia yang kuat. Gunakan panduan Master Prompt berikut untuk narasi: "${MASTER_PROMPT_FLOW}"`
-                              : `Hasilkan SATU (1) prompt video tunggal saja (ADEGAN 1) yang mereproduksi/mendeskripsikan ulang 1 adegan dari video yang diupload secara presisi dengan format VIDEO ASMR berdurasi 10 DETIK. Prompt visual harus dirancang sangat detail untuk menyoroti gerakan memuaskan, detail tekstur close-up, dan nuansa terapeutik khas ASMR. Khusus untuk mode 1 adegan ASMR ini, Anda TIDAK PERLU membuat narasi suara (voiceover). Sebagai gantinya, berikan deskripsi/rekomendasi detail musik latar belakang (soundtrack/backsound) dan efek suara ASMR (seperti ketukan, gesekan, bisikan, desiran air, dll) yang sangat cocok untuk melengkapi video tersebut pada kolom "rekomendasi_musik".`
+                              : `Anda adalah pakar AI video reverse-engineering. Tugas Anda adalah menganalisis video yang diunggah secara sangat mendalam dan merekonstruksi 1 adegan ASMR secara SAMA PERSIS (100% presisi dan identik) dengan video referensi tersebut.
+
+Tujuan utama: Jika prompt hasil generate ini dimasukkan ke AI Video Generator (seperti Google Veo, Flow, Luma Dream Machine, atau Runway Gen-3), hasil video yang dibuat akan persis menyerupai video referensi asli.
+
+Instruksi Khusus untuk Mode 1 Adegan ASMR ini:
+1. PROMPT VISUAL (visual_prompt): Tuliskan deskripsi visual dalam Bahasa Inggris yang SANGAT DETAIL, KOMPREHENSIF, dan PRESISI (frame-by-frame) yang mencakup:
+   - Subjek Utama & Objek: Nama spesifik, bentuk, warna, tekstur bahan (misal kilau logam, permukaan karet, serat, kehalusan), dan kondisi persis objek. ${productName ? `Subjek/Produk utama adalah: "${productName}".` : ''}
+   - Gerakan & Aksi Persis: Urutan interaksi gerakan tangan (misal: tangan bersarung hitam/tangan polos memegang alat presisi, meneteskan cairan, menekan, mengurut, menggesek, memutar komponen), serta respons fisika objek.
+   - Sudut & Gerakan Kamera: Sudut pandang (misal: extreme macro close-up, top-down 9:16 vertical view), jenis lensa (shallow depth of field, bokeh halus), dan gerakan kamera (static macro, slow tracking shot, smooth push-in).
+   - Pencahayaan & Suasana: Jenis tata cahaya (studio lighting, neon LED accent glow, soft cinematic shadows), kontras, dan latar belakang (meja kayu, permukaan serat karbon, studio bersih).
+   - Detail Fisikal & Visual: Percikan, embun/tetesan air, asap tipis, pantulan kilau, rotasi presisi, atau getaran mikro.
+   - Kata Kunci Kualitas AI Video: "Hyper-realistic 8K, macro cinematic footage, 9:16 vertical orientation, precise physics, 60fps, photorealistic".
+
+2. REKOMENDASI MUSIK & EFEK ASMR (rekomendasi_musik):
+   - Berikan deskripsi rinci efek suara ASMR spesifik yang terlihat/terdengar dalam video referensi (seperti ketukan kuku/alat, desiran air, cicitan gesekan karet, suara putaran mesin mikro, klik mekanis, tumpatan cairan) beserta rekomendasi genre/tempo musik latar (seperti ambient chill synth, lo-fi beats, retro future bass) yang sangat pas melengkapi adegan tersebut.
+
+3. MASTER PROMPT FLOW (master_prompt_flow):
+   - Ringkasan master prompt visual gaya, pencahayaan, rasio 9:16, dan pengaturan kamera untuk menjaga konsistensi pengerjaan ulang video di platform AI.
+
+Khusus mode 1 adegan ASMR ini, TIDAK PERLU membuat narasi voiceover.`
                             }
                             
                             Tambahkan juga:
@@ -182,6 +201,9 @@ const PromptCreator: React.FC<PromptCreatorProps> = ({ onBack }) => {
             try {
                 const parsed = JSON.parse(resultJson);
                 let textToCopy = `ADEGAN 1:\n${parsed.adegan_1?.visual_prompt || ''}`;
+                if (parsed.adegan_1?.rekomendasi_musik) {
+                    textToCopy += `\n\nREKOMENDASI MUSIK & ASMR:\n${parsed.adegan_1.rekomendasi_musik}`;
+                }
                 if (parsed.adegan_2?.visual_prompt) {
                     textToCopy += `\n\nADEGAN 2:\n${parsed.adegan_2.visual_prompt}`;
                 }
@@ -217,7 +239,7 @@ const PromptCreator: React.FC<PromptCreatorProps> = ({ onBack }) => {
             const base64Data = productImage.split(',')[1];
             
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash-image',
+                model: 'gemini-3.1-flash-lite-image',
                 contents: {
                     parts: [
                         { inlineData: { data: base64Data, mimeType: "image/jpeg" } },

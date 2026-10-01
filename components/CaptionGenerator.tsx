@@ -59,7 +59,7 @@ const CaptionGenerator: React.FC<CaptionGeneratorProps> = ({ onBack }) => {
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.8-flash",
         contents: [
           {
             role: "user",
